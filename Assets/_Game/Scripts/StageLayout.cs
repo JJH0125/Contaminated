@@ -68,15 +68,9 @@ namespace Squad
         [SerializeField] private float edgeMargin = 10f;
         [Tooltip("땅의 기울기가 이 각도(도)보다 가파른 곳에는 놓지 않는다")]
         [SerializeField] private float maxSlope = 25f;
-        [Tooltip("라운드마다 놓을 발전기의 개수. Stage 프리팹에는 발전기를 하나만 넣어 두면 되고, 모자란 만큼 복제한다")]
-        [SerializeField] private int generatorCount = 3;
-        [Tooltip("발전기를 뿌릴 부채꼴의 절반 각도(도). 플레이어의 정반대 방향을 기준으로 좌우로 이만큼 벌어진다")]
-        [Range(10f, 180f)]
-        [SerializeField] private float generatorSpreadAngle = 80f;
-        [Tooltip("발전기가 지형 한가운데에서 적어도 이만큼(m)은 떨어지게 한다")]
-        [SerializeField] private float generatorMinRadius = 30f;
-        [Tooltip("발전기끼리 적어도 이만큼(m)은 떨어지게 한다")]
-        [SerializeField] private float generatorSpacing = 35f;
+        [Tooltip("라운드마다 차원별로 놓을 적의 수. Stage 프리팹에는 차원마다 적을 하나씩만 넣어 두면 되고, " +
+                 "모자란 만큼 같은 차원의 적을 복제한다 (3이면 Real 3마리, Fake 3마리)")]
+        [SerializeField] private int enemiesPerDimension = 3;
         [Tooltip("적과 모닥불이 먼저 놓인 오브젝트에서 적어도 이만큼(m)은 떨어지게 한다")]
         [SerializeField] private float objectSpacing = 10f;
 
@@ -121,7 +115,6 @@ namespace Squad
             _halfExtent = Mathf.Min(size.x, size.z) * 0.5f - edgeMargin;
 
             Vector3 playerSpot = PlaceExitAndPlayer();
-            PlaceGenerators(playerSpot);
             PlaceEnemies(playerSpot);
             // 모닥불은 자리가 조금 달라져도 상관없으므로, 중요한 것들을 먼저 놓은 뒤 남은 자리에 놓는다.
             PlaceCampfires();
@@ -175,34 +168,6 @@ namespace Squad
 
         // ── 무작위 배치 ──────────────────────────────────────────────
 
-        private void PlaceGenerators(Vector3 playerSpot)
-        {
-            // 지형 한가운데에서 봤을 때 플레이어의 정반대 방향
-            Vector3 away = _center - playerSpot;
-            float awayAngle = Mathf.Atan2(away.z, away.x) * Mathf.Rad2Deg;
-
-            foreach (Generator generator in GetCopies<Generator>(generatorCount))
-            {
-                Vector3 spot = _center;
-                bool found = false;
-
-                for (int i = 0; i < MaxTries && !found; i++)
-                {
-                    float angle = (awayAngle + Random.Range(-generatorSpreadAngle, generatorSpreadAngle))
-                                  * Mathf.Deg2Rad;
-                    // 거리를 그냥 고르게 뽑으면 가운데 쪽에 몰린다. (바깥쪽 고리일수록 넓으므로)
-                    // 거리의 제곱을 고르게 뽑아야 넓이 기준으로 고르게 퍼진다.
-                    float radius = Mathf.Sqrt(Random.Range(
-                        generatorMinRadius * generatorMinRadius, _halfExtent * _halfExtent));
-
-                    spot = _center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                    found = IsUsable(spot) && IsFarFromPlaced(spot, generatorSpacing);
-                }
-
-                PlaceRandom(generator.transform, spot, found, generatorHeight);
-            }
-        }
-
         /// <summary>
         /// Stage에 들어 있는 T(발전기, 모닥불)를 count개가 되도록 맞춰서 돌려준다.
         /// 정해진 개수보다 적으면, 첫 번째 것을 견본으로 삼아 모자란 만큼 복제한다.
@@ -234,8 +199,39 @@ namespace Squad
 
             // 적의 높이는 여기서 정하지 않는다. 이 뒤에 실행되는 ChaserLocomotion의 Awake가
             // 자기 설정값(heightAboveGround)으로 땅 위에 올라서므로, 여기서는 땅에 놓기만 한다.
-            foreach (HorrorChaserAgent enemy in GetComponentsInChildren<HorrorChaserAgent>())
+            foreach (HorrorChaserAgent enemy in GetEnemyCopies())
                 PlaceAwayFromPlayer(enemy.transform, playerSpot, minDistance, 0f);
+        }
+
+        /// <summary>
+        /// 차원마다 적이 enemiesPerDimension마리가 되도록 맞춰서 모두 돌려준다.
+        /// 발전기나 모닥불과 같은 방식으로, 차원마다 첫 번째 적을 견본으로 삼아 모자란 만큼 복제한다.
+        /// (Real 적은 Real 적끼리, Fake 적은 Fake 적끼리 복제하므로 모습과 레이어가 그대로 따라간다)
+        /// </summary>
+        private List<HorrorChaserAgent> GetEnemyCopies()
+        {
+            var all = new List<HorrorChaserAgent>(GetComponentsInChildren<HorrorChaserAgent>());
+            var byDimension = new Dictionary<Dimension, List<HorrorChaserAgent>>();
+            foreach (HorrorChaserAgent enemy in all)
+            {
+                Dimension dimension = enemy.TryGetComponent(out DimensionMember member) ? member.Dimension : Dimension.None;
+                if (!byDimension.TryGetValue(dimension, out List<HorrorChaserAgent> group))
+                    byDimension[dimension] = group = new List<HorrorChaserAgent>();
+                group.Add(enemy);
+            }
+
+            foreach (List<HorrorChaserAgent> group in byDimension.Values)
+            {
+                HorrorChaserAgent sample = group[0];
+                for (int i = group.Count; i < enemiesPerDimension; i++)
+                {
+                    HorrorChaserAgent copy = Instantiate(sample, sample.transform.parent);
+                    copy.name = sample.name + " " + (i + 1);
+                    all.Add(copy);
+                }
+            }
+
+            return all;
         }
 
         // 모닥불을 지형 전체에 서로 떨어뜨려 놓고, 그 주변의 나무와 풀을 치운다.

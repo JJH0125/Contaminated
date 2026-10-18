@@ -15,10 +15,10 @@ namespace Squad
 
         void Start()
         {
+            // 먼저 닫아 둔 뒤 등록한다. 등록하면서 GameManager가 바로 열 수도 있기 때문이다.
+            IsActive = false;
             if (GameManager.Instance != null)
                 GameManager.Instance.AddExit(this);
-                
-            IsActive = false;
         }
         
         void Update()
@@ -53,7 +53,7 @@ namespace Squad
             return (mask.value & (1 << layer)) != 0;
         }
 
-        /// 발전기가 모두 켜지면 GameManager가 호출
+        /// 탈출 조건을 채우면 GameManager가 호출한다. (지금은 등록하자마자 연다)
         public void Activate()
         {
             IsActive = true;

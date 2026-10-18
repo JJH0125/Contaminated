@@ -1,42 +1,45 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Squad
 {
     /// <summary>
-    /// 플레이어가 횃불을 들고 던지는 것을 관리한다.
-    ///   들기    모닥불(Campfire)이 TakeTorch를 부른다. 횃불 프리팹을 만들어 손뼈에 붙인다
-    ///   던지기  던지는 키를 누르면, 들고 있던 바로 그 횃불을 손에서 떼어 바라보는 방향으로 던진다
+    /// 플레이어가 손에 든 횃불과, 횃불을 숨기는 동안 줄어드는 온기 게이지를 관리한다.
     ///
-    /// 들고 있는 횃불과 던져진 횃불은 같은 오브젝트다. 손에 있는 동안은 플레이어의 자식이라 따라다니고,
-    /// 던지는 순간 Stage의 자식으로 옮겨져 혼자 날아간다. (Stage의 자식이므로 라운드가 끝나면 함께 사라진다)
+    /// 횃불은 라운드가 시작될 때부터 손에 들고 있다. 던지거나 놓을 수 없다.
+    ///   숨기기  Space를 누르고 있는 동안 횃불을 주머니에 넣어 둔다(횃불 오브젝트를 끈다).
+    ///           불빛이 꺼지므로 적에게 "불빛에 드러난" 상태가 되지 않고, 주변도 어두워진다.
+    ///   꺼내기  Space를 떼면 다시 꺼낸다.
     ///
-    /// 횃불은 한 번에 하나만 들 수 있다. 던진 뒤에는 모닥불에서 다시 집어야 하며,
-    /// 던지고 나서 pickupCooldown(2.5초)이 지나야 다시 집을 수 있다.
+    /// 온기 게이지(Warmth, 0~1):
+    ///   숨기고 있는 동안 점점 줄어들고, 들고 있는 동안 다시 찬다.
+    ///   다 떨어지면 의지와 상관없이 횃불을 꺼내 든다. 이때는 Space를 한 번 뗐다가 다시 눌러야 숨길 수 있다.
+    ///   게이지 표시(WarmthGauge)와 화면 가장자리 오염 효과(ContaminationEdgeEffect)가 이 값을 읽어 간다.
     ///
     /// 모델에서 손뼈를 찾으면 횃불을 손에 쥐여서, 달리거나 걸을 때 팔과 함께 흔들리게 한다.
-    /// 손뼈를 찾지 못하면(뼈 이름이 다른 모델 등) 예전처럼 몸 옆의 정해진 자리에 든다.
+    /// 손뼈를 찾지 못하면(뼈 이름이 다른 모델 등) 몸 옆의 정해진 자리에 든다.
     ///
     /// 손에 든 동안에는 횃불의 불빛을 플레이어 앞쪽으로 내어 둬서, 밝은 곳이 진행 방향으로 쏠리게 한다.
-    /// 던지면 불빛은 횃불 자리로 돌아가므로, 앞을 비추던 빛을 잃는다. (미끼로 쓸지, 앞을 볼지의 선택)
     /// 플레이어 주변의 작은 기본 조명은 Player 아래의 일반 Light가 맡고, 적의 시야 규칙과는 상관없다.
     ///
-    /// 모델의 Animator에 던지기 Trigger 파라미터가 있으면, 던지는 애니메이션을 재생하고
-    /// 팔을 휘두르는 순간(releaseDelay 뒤)에 횃불을 놓는다. 파라미터가 없으면 키를 누르는 즉시 던진다.
+    /// 넣고 꺼내는 동작은 이 스크립트가 직접 재생한다. 팔이 지금 동작의 어디쯤에 있는지(_armTime)를 기억해 두고,
+    ///   누르면  그 지점부터 넣는 동작(HideTorch)을 앞으로 재생하고, 손이 주머니 지점(torchVanishDelay)을 지나면 횃불을 끈다
+    ///   떼면    그 지점부터 같은 동작을 거꾸로(DrawTorch) 재생하고, 손이 주머니 지점을 다시 지나면 횃불을 켠다
+    /// 그래서 넣다가 바로 떼거나 꺼내다가 다시 눌러도 팔이 튀지 않는다.
+    /// 넣는 동작이 끝나면 팔은 다리처럼 걷기·뛰기·대기 동작을 그대로 따른다.
+    /// (PlayerHazmat 컨트롤러의 Hide Torch 레이어가 상체에만 이 동작을 입힌다)
+    /// 컨트롤러에 이 레이어가 없으면 모션 없이 횃불만 사라진다.
     ///
     /// 씬 구성:
-    ///   Player가 붙은 오브젝트에 붙이고, torchPrefab에 횃불 프리팹(Torch + FireSource)을 연결한다.
+    ///   Player가 붙은 오브젝트에 붙이고, torchPrefab에 횃불 프리팹(FireSource가 붙은 것)을 연결한다.
     /// </summary>
     [RequireComponent(typeof(Player))]
     public class TorchHolder : MonoBehaviour
     {
         [Header("■ 필수 연결 — 비워두면 에러")]
-        [Tooltip("횃불 프리팹. Torch와 FireSource가 붙어 있어야 한다")]
+        [Tooltip("횃불 프리팹. FireSource가 붙어 있어야 한다")]
         [SerializeField] private Torch torchPrefab;
 
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("횃불을 던지는 키")]
-        [SerializeField] private KeyCode throwKey = KeyCode.Q;
+        [Header("○ 손에 쥐는 자리")]
         [Tooltip("횃불을 쥘 손뼈의 이름. 켜져 있는 모델에서 찾는다")]
         [SerializeField] private string handBoneName = "mixamorig:RightHand";
         [Tooltip("손뼈를 기준으로 한, 주먹 안쪽(횃불을 쥐는 자리)의 위치(m, 모델 Scale 1 기준). 손뼈의 축 방향 기준이다. " +
@@ -51,105 +54,227 @@ namespace Squad
         [SerializeField] private Vector3 holdPosition = new Vector3(0.65f, 0.2f, 0.35f);
         [Tooltip("손뼈를 찾지 못했을 때 횃불을 드는 각도. 플레이어 오브젝트 기준")]
         [SerializeField] private Vector3 holdRotation = new Vector3(10f, 0f, -25f);
-        [Tooltip("던질 때 앞으로 나가는 속도(m/s)")]
-        [SerializeField] private float throwSpeed = 48f;
-        [Tooltip("던질 때 위로 솟는 속도(m/s). 클수록 높이, 멀리 날아간다")]
-        [SerializeField] private float throwUpSpeed = 24f;
-        [Tooltip("던지는 애니메이션을 재생할 Animator의 Trigger 파라미터 이름. Animator에 없으면 애니메이션 없이 바로 던진다")]
-        [SerializeField] private string throwTrigger = "throw";
-        [Tooltip("던지는 애니메이션이 시작된 뒤 횃불을 손에서 놓기까지의 시간(초). 팔을 앞으로 휘두르는 순간에 맞춘다")]
-        [SerializeField] private float releaseDelay = 0.35f;
-        [Tooltip("횃불을 던진 뒤 다시 집을 수 있을 때까지 기다려야 하는 시간(초)")]
-        [SerializeField] private float pickupCooldown = 2.5f;
-        [Tooltip("던진 횃불이 떨어지는 소리를 들을 수 있는 적의 레이어")]
-        [SerializeField] private LayerMask enemyLayer = (1 << 8) | (1 << 9);   // RealEnemy + FakeEnemy
 
         [Header("○ 손에 든 횃불의 불빛")]
         [Tooltip("불빛의 중심을 플레이어 앞으로 얼마나 내어 둘지(m). 빛은 둥글게 퍼지지만 밝은 곳이 진행 방향으로 쏠린다")]
         [SerializeField] private float heldLightForward = 6f;
         [Tooltip("불빛의 높이(m). 플레이어 오브젝트 위치(발에서 1m 위) 기준")]
         [SerializeField] private float heldLightHeight = 3f;
-        [Tooltip("손에 들고 있는 동안 불빛이 닿는 거리(m). 던지면 횃불 프리팹에 정해 둔 거리로 돌아간다")]
+        [Tooltip("손에 들고 있는 동안 불빛이 닿는 거리(m)")]
         [SerializeField] private float heldLightRange = 22f;
 
-        private Player _player;
-        // 지금 들고 있는 횃불. 빈손이면 null.
+        [Header("○ 횃불 숨기기와 온기 게이지")]
+        [Tooltip("누르고 있는 동안 횃불을 숨기는 키")]
+        [SerializeField] private KeyCode hideKey = KeyCode.Space;
+        [Tooltip("가득 찬 온기 게이지가 숨기는 동안 모두 닳는 데 걸리는 시간(초)")]
+        [SerializeField] private float warmthDrainTime = 20f;
+        [Tooltip("빈 온기 게이지가 횃불을 들고 있는 동안 모두 차는 데 걸리는 시간(초)")]
+        [SerializeField] private float warmthRecoverTime = 6f;
+        [Tooltip("넣고 꺼내는 동작의 재생 속도 배율. 2면 원래 애니메이션의 2배 빠르기다")]
+        [SerializeField] private float hideAnimationSpeed = 2f;
+        [Tooltip("넣는 동작에서 손이 주머니에 닿는 순간(초, 원래 애니메이션 기준). 넣을 때는 이 지점을 지나면 횃불이 사라지고, " +
+                 "꺼낼 때는 거꾸로 이 지점을 지나면 다시 나타난다. 재생 속도를 바꿔도 이 값은 그대로 두면 된다")]
+        [SerializeField] private float torchVanishDelay = 0.4f;
+
+        /// <summary>온기 게이지 (1: 가득, 0: 다 떨어짐). 라운드마다 가득 찬 채로 시작한다.</summary>
+        public static float Warmth { get; private set; } = 1f;
+        /// <summary>지금 횃불을 숨기고 있는가.</summary>
+        public static bool IsHiding { get; private set; }
+
+        // 손에 든 횃불. 횃불 프리팹이 비어 있으면 null.
         private Torch _torch;
         // 들고 있는 횃불의 불빛
         private FireSource _torchFire;
         // 횃불을 쥘 손뼈. 찾지 못하면 null.
         private Transform _hand;
-        // 던지는 애니메이션을 재생할 Animator. 던지기 Trigger가 없으면 null.
+        // 넣고 꺼내는 동작을 재생할 Animator, 그 레이어 번호, 넣는 동작의 길이(초). 없으면 null / -1 / 0.
         private Animator _animator;
-        // 던지는 애니메이션이 재생 중이라 아직 손에서 놓지 않은 상태인지
-        private bool _throwing;
+        private int _hideLayer = -1;
+        private float _hideClipLength;
 
-        // 다시 횃불을 집을 수 있게 되는 시각
-        private float _canTakeTime;
+        // 팔이 지금 넣는 동작의 어디쯤에 있는가 (초, 원래 애니메이션 기준. 0 = 횃불을 쥔 자세)
+        private float _armTime;
+        // 팔이 움직이는 방향 (+1 넣는 중, -1 꺼내는 중, 0 넣고 꺼내는 동작을 하지 않음)
+        private int _armDirection;
+
+        // 컨트롤러(PlayerHazmat)의 Hide Torch 레이어 안의 상태와 파라미터 이름
+        private const string HideLayerName = "Hide Torch";
+        private const string HideStateName = "HideTorch";
+        private const string DrawStateName = "DrawTorch";
+        private const string EmptyStateName = "Empty";
+        private const string SpeedParameter = "hideSpeed";
+        // 넣기·꺼내기를 시작할 때, 다 꺼낸 뒤 원래 팔 동작으로 돌아갈 때 섞는 시간(초)
+        private const float BlendIn = 0.12f;
+        private const float BlendOut = 0.25f;
+        // 게이지가 다 떨어져 강제로 꺼낸 뒤, 숨기기 키를 한 번 뗄 때까지 다시 숨기지 못하게 한다.
+        private bool _mustReleaseKey;
 
         public bool HasTorch => _torch != null;
 
-        /// <summary>
-        /// 지금 횃불을 집을 수 있는가. 빈손이고, 던진 뒤 pickupCooldown이 지났어야 한다.
-        /// </summary>
-        public bool CanTakeTorch => !HasTorch && Time.time >= _canTakeTime;
+        // 넣고 꺼내는 동작을 재생할 수 있는가. (컨트롤러에 Hide Torch 레이어와 HideTorch 클립이 있어야 한다)
+        private bool CanAnimate => _animator != null && _hideLayer >= 0 && _hideClipLength > 0f;
 
         private void Awake()
         {
-            _player = GetComponent<Player>();
             _hand = FindActiveChild(transform, handBoneName);
 
             // 꺼 둔 예전 모델의 Animator는 건너뛴다.
-            Animator animator = GetComponentInChildren<Animator>();
-            if (animator != null && HasTrigger(animator, throwTrigger))
-                _animator = animator;
+            _animator = GetComponentInChildren<Animator>();
+            if (_animator != null && _animator.runtimeAnimatorController != null)
+            {
+                _hideLayer = _animator.GetLayerIndex(HideLayerName);
+                foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
+                    if (clip.name == HideStateName)
+                        _hideClipLength = clip.length;
+            }
+
+            Warmth = 1f;
+            IsHiding = false;
+
+            // 게이지 표시가 없으면 만든다. (가장자리 오염 효과는 카메라에 스스로 붙는다)
+            WarmthGauge.EnsureExists();
         }
+
+        private void Start() => TakeTorch();
 
         private void Update()
         {
-            // 일시정지 중에는 던지지 않는다.
-            if (Time.timeScale == 0f)
+            // 일시정지 중에는 게이지도 멈춘다.
+            if (Time.timeScale == 0f || !HasTorch)
                 return;
 
-            if (!HasTorch || _throwing || !Input.GetKeyDown(throwKey))
-                return;
+            if (!Input.GetKey(hideKey))
+                _mustReleaseKey = false;
 
-            if (_animator == null)
+            bool wantHide = Input.GetKey(hideKey) && !_mustReleaseKey;
+
+            if (wantHide)
             {
-                ThrowTorch();
+                Warmth = Mathf.Max(0f, Warmth - Time.deltaTime / Mathf.Max(warmthDrainTime, 0.01f));
+
+                // 다 떨어지면 의지와 상관없이 꺼내 든다.
+                if (Warmth <= 0f)
+                {
+                    wantHide = false;
+                    _mustReleaseKey = true;
+                }
+            }
+            else
+            {
+                Warmth = Mathf.Min(1f, Warmth + Time.deltaTime / Mathf.Max(warmthRecoverTime, 0.01f));
+            }
+
+            SetHidden(wantHide);
+            AdvanceArm();
+        }
+
+        // 숨기기 키를 누르거나 뗐을 때.
+        private void SetHidden(bool hidden)
+        {
+            if (IsHiding == hidden)
+                return;
+
+            IsHiding = hidden;
+
+            if (!CanAnimate)
+            {
+                // 동작이 없으면 바로 숨기고 바로 꺼낸다.
+                _torch.gameObject.SetActive(!hidden);
                 return;
             }
 
-            _animator.SetTrigger(throwTrigger);
-            StartCoroutine(ThrowAfterDelay());
-        }
-
-        // 팔을 휘두르는 순간까지 횃불을 손에 쥔 채로 기다렸다가 놓는다.
-        private IEnumerator ThrowAfterDelay()
-        {
-            _throwing = true;
-            yield return new WaitForSeconds(releaseDelay);
-            _throwing = false;
-
-            if (HasTorch)
-                ThrowTorch();
-        }
-
-        private static bool HasTrigger(Animator animator, string parameterName)
-        {
-            foreach (AnimatorControllerParameter parameter in animator.parameters)
-                if (parameter.type == AnimatorControllerParameterType.Trigger && parameter.name == parameterName)
-                    return true;
-
-            return false;
+            _animator.SetFloat(SpeedParameter, hideAnimationSpeed);
+            if (hidden)
+                StartHide();
+            else
+                StartDraw();
         }
 
         /// <summary>
-        /// 횃불을 하나 만들어 손에 든다. 이미 들고 있으면 아무 일도 하지 않는다.
+        /// 넣는 동작을 시작한다. 꺼내던 중이면 팔이 있던 그 지점부터 다시 넣는다(되감던 것을 그대로 다시 감는다).
         /// </summary>
-        public void TakeTorch()
+        private void StartHide()
         {
-            if (!CanTakeTorch || torchPrefab == null)
+            if (_armDirection < 0)
+                _animator.Play(HideStateName, _hideLayer, _armTime / _hideClipLength);
+            else
+            {
+                _armTime = 0f;
+                _animator.CrossFadeInFixedTime(HideStateName, BlendIn, _hideLayer, 0f);
+            }
+
+            _armDirection = 1;
+        }
+
+        /// <summary>
+        /// 꺼내는 동작을 시작한다. 넣는 동작을 거꾸로 재생하는 것이다.
+        ///   넣던 중이면  팔이 있던 그 지점부터 되감는다. (넣다가 바로 떼도 팔이 튀지 않는다)
+        ///   다 넣은 뒤면 팔은 이미 걷기·뛰기 동작으로 돌아가 있으므로, 손이 주머니에 닿은 지점부터 되감는다.
+        /// 횃불은 되감다가 손이 주머니 지점을 지날 때 다시 나타난다. (AdvanceArm에서)
+        /// </summary>
+        private void StartDraw()
+        {
+            if (_armDirection > 0)
+                _animator.Play(DrawStateName, _hideLayer, _armTime / _hideClipLength);
+            else
+            {
+                _armTime = Mathf.Clamp(torchVanishDelay, 0f, _hideClipLength);
+                _animator.CrossFadeInFixedTime(DrawStateName, BlendIn, _hideLayer, _armTime);
+            }
+
+            _armDirection = -1;
+        }
+
+        /// <summary>
+        /// 팔의 위치를 재생 속도만큼 앞이나 뒤로 옮기고, 손이 주머니 지점을 지나는 순간 횃불을 끄거나 켠다.
+        /// 끄면 불빛도 꺼지고, 불빛에 드러나는 규칙(FireSource)에서도 빠진다.
+        /// </summary>
+        private void AdvanceArm()
+        {
+            if (_armDirection == 0)
+                return;
+
+            float pocketPoint = Mathf.Clamp(torchVanishDelay, 0f, _hideClipLength);
+            _armTime += _armDirection * hideAnimationSpeed * Time.deltaTime;
+
+            if (_armDirection > 0)
+            {
+                if (_armTime >= pocketPoint && _torch.gameObject.activeSelf)
+                    _torch.gameObject.SetActive(false);
+
+                // 넣는 동작이 끝나 가면 컨트롤러가 알아서 원래 팔 동작으로 섞어 돌려보낸다.
+                if (_armTime >= _hideClipLength)
+                {
+                    _armTime = _hideClipLength;
+                    _armDirection = 0;
+                }
+            }
+            else
+            {
+                if (_armTime <= pocketPoint && !_torch.gameObject.activeSelf)
+                    _torch.gameObject.SetActive(true);
+
+                // 다 꺼냈으면 팔을 원래 이동 동작으로 돌려보낸다.
+                if (_armTime <= 0f)
+                {
+                    _armTime = 0f;
+                    _armDirection = 0;
+                    _animator.CrossFadeInFixedTime(EmptyStateName, BlendOut, _hideLayer);
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            // 라운드가 끝나 Stage와 함께 사라지면, 화면 효과가 남지 않도록 게이지를 되돌린다.
+            Warmth = 1f;
+            IsHiding = false;
+        }
+
+        // 횃불을 하나 만들어 손에 든다. 라운드가 시작될 때 한 번만 부른다.
+        private void TakeTorch()
+        {
+            if (HasTorch || torchPrefab == null)
                 return;
 
             if (_hand == null)
@@ -175,7 +300,8 @@ namespace Squad
         // (애니메이션이 손을 움직인 뒤에 맞춰야 하므로 LateUpdate에서 한다)
         private void LateUpdate()
         {
-            if (!HasTorch)
+            // 횃불이 꺼진 뒤(주머니 속)에는 맞출 필요가 없다. 사라지기 전까지는 손에 붙어 따라간다.
+            if (!HasTorch || !_torch.gameObject.activeSelf)
                 return;
 
             if (_hand != null && _torch.transform.parent == _hand)
@@ -227,37 +353,6 @@ namespace Squad
                     return child;
 
             return null;
-        }
-
-        private void ThrowTorch()
-        {
-            Torch torch = _torch;
-            _torch = null;
-            _canTakeTime = Time.time + pickupCooldown;
-
-            // 손을 떠난 횃불은 다시 자기 자리에서 사방을 비춘다. 앞을 비추던 불빛도 함께 잃는다.
-            if (_torchFire != null)
-                _torchFire.ResetLight();
-            _torchFire = null;
-
-            // 손에서 떼어 Stage의 자식으로 옮긴다. 위치와 방향은 지금 보이는 그대로 유지한다.
-            torch.transform.SetParent(transform.parent, true);
-
-            // 비탈에 서 있으면 그 기울기를 따라 던진다.
-            // 수평으로만 던지면 오르막을 향했을 때 횃불이 발 앞의 땅에 바로 박힌다.
-            Vector3 forward = transform.forward;
-            Terrain terrain = Terrain.activeTerrain;
-            if (terrain != null)
-            {
-                // GetInterpolatedNormal은 지형의 한쪽 끝을 0, 반대쪽 끝을 1로 본 비율 좌표를 받는다.
-                Vector3 local = transform.position - terrain.transform.position;
-                Vector3 size = terrain.terrainData.size;
-                Vector3 groundNormal = terrain.terrainData.GetInterpolatedNormal(local.x / size.x, local.z / size.z);
-                forward = Vector3.ProjectOnPlane(forward, groundNormal).normalized;
-            }
-
-            Vector3 velocity = forward * throwSpeed + Vector3.up * throwUpSpeed;
-            torch.Throw(velocity, _player.myDimension, enemyLayer);
         }
     }
 }

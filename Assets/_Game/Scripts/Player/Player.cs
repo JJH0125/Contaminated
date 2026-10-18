@@ -16,9 +16,9 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     [Header("○ 튜닝 값 — 자유롭게 조절")]
-    [Tooltip("달리는 속도")]
+    [Tooltip("달리는 속도 (Shift를 누르고 있을 때)")]
     [SerializeField] private float moveSpeed = 15f;
-    [Tooltip("걷는 속도 (Walk 키를 누르고 있을 때)")]
+    [Tooltip("걷는 속도 (기본)")]
     [SerializeField] private float walkSpeed = 7.5f;
     [Tooltip("중력 가속도(음수)")]
     [SerializeField] private float gravity = -20f;
@@ -87,7 +87,9 @@ public class Player : MonoBehaviour
     {
         X_Axis = Input.GetAxisRaw("Horizontal");
         Z_Axis = Input.GetAxisRaw("Vertical");
-        isWalk = Input.GetButton("Walk"); // 왼쪽 shift 키
+        // 기본은 걷기이고, Walk 버튼(왼쪽 Shift)을 누르고 있는 동안만 달린다.
+        // 횃불을 숨기고 있는 동안(TorchHolder)에는 뛸 수 없다.
+        isWalk = !Input.GetButton("Walk") || Squad.TorchHolder.IsHiding;
     }
 
     /// 1. 입력받은 x와 z, Walk키에 따라 수평 속도를 결정한다

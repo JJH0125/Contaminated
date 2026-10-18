@@ -383,7 +383,6 @@ MonoBehaviour:
   moveSpeed: 15
   walkSpeed: 7.5
   gravity: -20
-  jumpHeight: 1.2
 --- !u!114 &8451474501489812
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -417,18 +416,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   torchPrefab: {fileID: 450134387833632418, guid: 14ddb99febe946d58b5247352646bda3, type: 3}
-  throwKey: 113
   handBoneName: mixamorig:RightHand
   handOffset: {x: 0, y: 0.07, z: 0.04}
   handRotation: {x: 0, y: 0, z: 120}
   gripPoint: {x: 0, y: -0.12, z: 0}
   holdPosition: {x: 0.65, y: 0.2, z: 0.35}
   holdRotation: {x: 10, y: 0, z: -25}
-  throwSpeed: 48
-  throwUpSpeed: 24
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 768
+  heldLightForward: 6
+  heldLightHeight: 3
+  heldLightRange: 22
+  hideKey: 32
+  warmthDrainTime: 10
+  warmthRecoverTime: 5
+  hideBoolParameter: isHiding
 --- !u!114 &213658195181367972
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -444,6 +444,33 @@ MonoBehaviour:
   suitMaterial: {fileID: 2100000, guid: d23af030cc13489587b8104747c34260, type: 2}
   firstRoundContamination: 0
   lastRoundContamination: 0.85
+--- !u!114 &692998355890571046
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8451474501489822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 417f873e54fe4bb8b4a799c32b02a3cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  breathClip: {fileID: 8300000, guid: b3b4b1ddc4239d9479e3569daf5c249a, type: 3}
+  volume: 0.6
+  calmVolume: 0.35
+  nearVolume: 0.7
+  chasedVolume: 1
+  calmGap: 1.75
+  nearGap: 0.5
+  chasedGap: 0.05
+  calmPitch: 1
+  nearPitch: 1.05
+  chasedPitch: 1.12
+  lastRoundPitchDrop: 0.04
+  pitchJitter: 0.03
+  volumeJitter: 0.1
+  gapJitter: 0.2
 --- !u!1 &8451474660254584
 GameObject:
   m_ObjectHideFlags: 0
@@ -902,10 +929,7 @@ MonoBehaviour:
   playerDistanceFromExit: 25
   edgeMargin: 10
   maxSlope: 25
-  generatorCount: 3
-  generatorSpreadAngle: 80
-  generatorMinRadius: 30
-  generatorSpacing: 35
+  enemiesPerDimension: 3
   objectSpacing: 10
   campfireCount: 6
   campfireSpacing: 40
@@ -929,7 +953,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &8451474897673637
 Transform:
   m_ObjectHideFlags: 0
@@ -3133,16 +3157,3 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
---- !u!114 &692998355890571046
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8451474501489822}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 417f873e54fe4bb8b4a799c32b02a3cd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  breathClip: {fileID: 8300000, guid: b3b4b1ddc4239d9479e3569daf5c249a, type: 3}

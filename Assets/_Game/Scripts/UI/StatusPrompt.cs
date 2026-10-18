@@ -57,7 +57,8 @@ namespace Squad
 
             // 전부 켜졌으면 숫자 대신 탈출 안내를 띄운다.
             // (숫자는 이미 다 채웠으므로 다음 목표를 알려 주는 편이 낫다)
-            if (total > 0 && activated >= total)
+            // 발전기가 없는 라운드(지금의 기본)에는 처음부터 탈출 안내를 띄운다.
+            if (activated >= total)
             {
                 generatorText.text = exitOpenMessage;
                 generatorText.color = exitOpenColor;

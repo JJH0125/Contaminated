@@ -50,6 +50,8 @@ namespace Squad
         [Tooltip("라운드 클리어 화면")]
         [SerializeField] private GameObject resultUI;
         [Header("○ 튜닝 값 — 자유롭게 조절")]
+        [Tooltip("출구를 처음부터 열어 둘지. 발전기를 없앤 뒤 새 탈출 조건을 정하기 전까지는 켜 둔다")]
+        [SerializeField] private bool openExitAtStart = true;
         [Tooltip("전체 라운드 수")]
         [SerializeField] private int totalRounds = 5;
 
@@ -280,8 +282,12 @@ namespace Squad
         /// 생성된 출구가 스스로를 등록한다.
         public void AddExit(Exit exit)
         {
-            if (exit != null)
-                _exit = exit;
+            if (exit == null)
+                return;
+
+            _exit = exit;
+            if (openExitAtStart)
+                _exit.Activate();
         }
 
         /// <summary>
