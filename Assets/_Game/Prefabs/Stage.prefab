@@ -426,7 +426,7 @@ MonoBehaviour:
   heldLightHeight: 3
   heldLightRange: 22
   hideKey: 32
-  warmthDrainTime: 10
+  warmthDrainTime: 8
   warmthRecoverTime: 5
   hideBoolParameter: isHiding
 --- !u!114 &213658195181367972

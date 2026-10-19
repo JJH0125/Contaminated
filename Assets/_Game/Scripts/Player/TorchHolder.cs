@@ -66,8 +66,10 @@ namespace Squad
         [Header("○ 횃불 숨기기와 온기 게이지")]
         [Tooltip("누르고 있는 동안 횃불을 숨기는 키")]
         [SerializeField] private KeyCode hideKey = KeyCode.Space;
-        [Tooltip("가득 찬 온기 게이지가 숨기는 동안 모두 닳는 데 걸리는 시간(초)")]
-        [SerializeField] private float warmthDrainTime = 20f;
+        [Tooltip("가득 찬 온기 게이지가 숨기고 걷는 동안 모두 닳는 데 걸리는 시간(초)")]
+        [SerializeField] private float warmthDrainTime = 8f;
+        [Tooltip("숨긴 채 달리면 게이지가 걸을 때의 몇 배 빠르기로 닳는가")]
+        [SerializeField] private float runDrainMultiplier = 1.6f;
         [Tooltip("빈 온기 게이지가 횃불을 들고 있는 동안 모두 차는 데 걸리는 시간(초)")]
         [SerializeField] private float warmthRecoverTime = 6f;
         [Tooltip("넣고 꺼내는 동작의 재생 속도 배율. 2면 원래 애니메이션의 2배 빠르기다")]
@@ -87,6 +89,8 @@ namespace Squad
         private FireSource _torchFire;
         // 횃불을 쥘 손뼈. 찾지 못하면 null.
         private Transform _hand;
+        // 달리는 중인지 알아보기 위한 이동 담당
+        private Player _player;
         // 넣고 꺼내는 동작을 재생할 Animator, 그 레이어 번호, 넣는 동작의 길이(초). 없으면 null / -1 / 0.
         private Animator _animator;
         private int _hideLayer = -1;
@@ -117,6 +121,7 @@ namespace Squad
         private void Awake()
         {
             _hand = FindActiveChild(transform, handBoneName);
+            _player = GetComponent<Player>();
 
             // 꺼 둔 예전 모델의 Animator는 건너뛴다.
             _animator = GetComponentInChildren<Animator>();
@@ -150,7 +155,11 @@ namespace Squad
 
             if (wantHide)
             {
-                Warmth = Mathf.Max(0f, Warmth - Time.deltaTime / Mathf.Max(warmthDrainTime, 0.01f));
+                // 숨긴 채 달리면 더 빨리 닳는다.
+                float drain = Time.deltaTime / Mathf.Max(warmthDrainTime, 0.01f);
+                if (_player != null && _player.IsRunning)
+                    drain *= runDrainMultiplier;
+                Warmth = Mathf.Max(0f, Warmth - drain);
 
                 // 다 떨어지면 의지와 상관없이 꺼내 든다.
                 if (Warmth <= 0f)

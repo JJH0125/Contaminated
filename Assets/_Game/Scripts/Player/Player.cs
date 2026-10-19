@@ -36,6 +36,9 @@ public class Player : MonoBehaviour
     private float Z_Axis;
     private Vector3 horizontal;
     private bool isWalk;
+
+    /// <summary>지금 달리고 있는가 (움직이는 중이고 걷기가 아님). 횃불 게이지가 더 빨리 닳는 데 쓴다.</summary>
+    public bool IsRunning => !isWalk && horizontal != Vector3.zero;
     /// 플레이어가 속한 차원. 게임 시작 시 항상 Real 차원.
     public Dimension myDimension { get; private set; } = Dimension.Real;
     private Transform cameraTransform;
@@ -88,8 +91,8 @@ public class Player : MonoBehaviour
         X_Axis = Input.GetAxisRaw("Horizontal");
         Z_Axis = Input.GetAxisRaw("Vertical");
         // 기본은 걷기이고, Walk 버튼(왼쪽 Shift)을 누르고 있는 동안만 달린다.
-        // 횃불을 숨기고 있는 동안(TorchHolder)에는 뛸 수 없다.
-        isWalk = !Input.GetButton("Walk") || Squad.TorchHolder.IsHiding;
+        // 횃불을 들고 있으면 뛸 수 없다. 횃불을 숨긴 상태(TorchHolder)에서만 Shift로 달릴 수 있다.
+        isWalk = !(Input.GetButton("Walk") && Squad.TorchHolder.IsHiding);
     }
 
     /// 1. 입력받은 x와 z, Walk키에 따라 수평 속도를 결정한다
