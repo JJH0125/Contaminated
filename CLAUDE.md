@@ -74,37 +74,45 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ---
 
-## 4. 완성 / 진행 중 / 남은 것
+## 4. 현재 상태 (2026-10-19 기준)
+
+> 아래 2·3장은 초기 설계 기록이라 파일 위치와 일부 내용이 지금과 다르다(스크립트는 `Assets/_Game/Scripts/` 아래).
+> 지금 상태는 이 장을 기준으로 본다.
 
 ### ✅ 완성
-- 2D + 3D A* 길찾기 (비이동 버그 수정 완료: 중복 PathGrid + 잘못된 mask/world-size였음)
-- GOAP 엔진 + 세 목표 단일 추격자 (컴파일 OK, 협력 데모와 공존)
-- 경계 감쇠 시간 SerializeField화
-- SquadAgentContext→ChaserContext 개명
+- 2D + 3D A* 길찾기, GOAP 엔진 + 세 목표 단일 추격자(`HorrorChaserAgent`)
+- 시야 감지(`VisionCensor`): 같은 차원 → 거리(불빛 안이면 라운드에 따라 최대 2.5배) → 시야각 → 가려짐, 0.2초마다
+- 소리 시스템: `Sound`(값 채우기) + `SoundLibrary`(ScriptableObject) + `SoundEmitter`
+- 차원 이동: 어디서든 F 키(재사용 대기 12초, 이동 후 감지·잡기 유예 1초)
+- 적: 차원별 3마리
 
-### 🔶 진행 중 — 감지 시스템 (namespace Detection 권장)
-**시야 감지 3단계 함수 완성됨** (사용자가 직접 작성, 리뷰 완료):
-- 거리 체크 — 단, **플레이어가 유일하므로 OverlapSphere+배열 대신 플레이어 직접 참조로 단순화 권장** (targetLayer도 불필요해짐)
-- 각도 체크 `IsInViewAngle` — 방향벡터 y=0 평면화, 0벡터 예외, `viewAngle * 0.5f` 반각 비교(정확)
-- 차폐 체크 `HasLineOfSight` — eyeHeight에서 레이캐스트, 대상 몸통(1.2) 겨냥, distance 제한, obstacleLayer. **1.2를 SerializeField로 뺄 것 권장**
+### ✅ 2026-10-19에 한 작업
+1. **블랙보드: 보고 있는 적을 집합으로** (`SquadBlackboard._seeingEnemies`, 10-12 작업)
+   - `ReportSighting(적, 위치)`는 넣고, `ReportLostSight(적)`은 그 적만 뺀다
+   - `PlayerCurrentlyVisible` = 집합이 비어 있지 않은가 (읽기 전용 속성)
+2. **`ChaserContext`에 이름표 추가**: `Member`(`DimensionMember`). 쓰이지 않던 기본값과 `Agent`(SquadAgent) 필드는 삭제
+3. **경계 단계를 적마다 갖게 함** (커밋 `94cc1ae`)
+   - 새 컴포넌트 `ChaserAlert`(Goap/SingleChaser): `Level`(읽기 전용), 내려가는 시간 두 값, `Update`에서 한 단계씩 감소
+   - 올리는 입구는 `RaiseAlert(level)` 하나: 높으면 올림, 같으면 타이머만 0, 낮으면 무시 (→ 추격 중 경계가 잠깐 내려가던 버그 해결)
+   - `AlertLevel` 열거형은 `ChaserAlert.cs`에 클래스 밖으로 선언 (`SquadBlackboard.AlertLevel` 아님)
+   - 시야: 본 적만 `RaiseAlert(Alerted)` / 소리: 반경 안에서 들은 적 **모두** `RaiseAlert(소리의 단계)`, 블랙보드 보고는 한 번
+   - `ChaserContext.Alert`로 행동에 전달, 이동 속도는 `ctx.Alert.Level`로 결정 (`SearchSoundArea`는 이동이 없어 경계와 무관)
+4. **다중 추격자 데모(`SquadAgent.cs`, `Actions.cs`)를 `#if false`로 컴파일에서 제외** (보관용)
+5. **저장소 정리**: `CLAUDE.md`를 루트로 이동, `Assets/.claude` 삭제, `.gitignore`에 `/.claude/settings.local.json` 추가, 대화 기록 hook은 프로젝트 설정(`.claude/settings.json`) 하나로 통일
 
-**남은 감지 작업:**
-- **메인 로직**: 세 함수를 `&&`로 엮어 주기적(0.1~0.2s) 실행 → 통과하면 ReportSighting, 아니면 ReportLostSight
-- **상태 전환 감지 필요**: `_wasVisible` 변수로 "직전 보임 + 지금 안 보임"일 때만 ReportLostSight (한번도 못 봤을 때 매프레임 호출 방지). ReportSighting은 위치갱신이라 매번 OK
-- **same-dimension 체크**를 관문에 추가(차원 시스템 만들 때)
-- HearingSensor (소리 이벤트 방식)
+### 결정한 것
+- **블랙보드 = 적들이 함께 아는 사실**(누가 보나, 마지막 위치, 소리 정보, 조사 완료 목록) / **`ChaserAlert` = 적 각자의 긴장 상태**
+- 경계 관련 이름: 컴포넌트 `ChaserAlert`, 단계 속성 `Level`, 문서 필드 `ctx.Alert`, 입구 `RaiseAlert`
+- `DimensionMember` 이름은 유지 (차원별 벽·지형 등 적이 아닌 것에도 쓸 예정)
+- 두 PC 작업: 시작 시 pull → 끝낼 때 이 문서 갱신 + 커밋·푸시. 대화 기록(`문서\ClaudeLogs\*.md`)은 PC마다 따로 쌓이고 필요하면 직접 옮김
 
-### ⬜ 남은 것 (이후)
-- **소리 시스템 확장** (설계 완료, 구현 남음):
-  - SoundType을 **클래스(또는 ScriptableObject)로** — 소리는 데이터만 다르므로 상속 아닌 값 채우기(Goal과 같은 원리). 속성: radius, alertLevel, crossesDimension 등
-  - 소리 종류별 경계 강도 차등화(발전기=강함/관통, 발소리=약함/차원내)
-  - 소리 종류 확장(달리기, 물건소리, 미끼 등). 미끼는 InvestigateSound 활용
-- 쿼터뷰 카메라 + 플레이어 컨트롤러
-- 차원 메커니즘 구현(전환존, 차원별 적/발전기/소리)
-- **다중 추격자**: HorrorChaserAgent 여러개(블랙보드 공유) 또는 SquadAgent 성격 부활
-- **거리 기반 AlertLevel 공유**(사용자 아이디어): 플레이어 발견한 적과 일정 거리 내 적만 경계 공유. "같은 차원 + 거리 내" 조건과 결합 가능
-- DRY 수정(AdvanceToNextAction 추출), ChaserAgent.cs 제거, ChaserContext 별도 파일화
-- (선택) 커스텀 휴리스틱으로 알고리즘 깊이 강화 — admissible 유지하며 위협/차원/예측 반영
+### ⚠️ 알려진 문제 / 확인 필요
+- **Stage 프리팹의 적들에 `ChaserAlert`를 붙이고 저장해야 함** (안 붙이면 시야에서 null 에러)
+- `SoundEmitter`의 `GetComponentInParent<ChaserAlert>()?.RaiseAlert` → `?.` 대신 `!= null` 확인 권장
+- `VisionCensor`가 0.2초마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
+- 소리 정보(`HasSound` 등)는 여전히 공유라, 소리를 듣지 못한 같은 차원 적도 (Calm 속도로) 조사하러 감
+- 적 시야 레이캐스트가 지형을 장애물로 보지 않음 (봉우리 너머가 보임)
+- 차원 이동 도착 소리가 유예 1초 동안에도 바로 적에게 전달됨 (유예를 2초로, 소리를 유예 끝에 내는 안 검토 중)
 
 ---
 
@@ -117,15 +125,29 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - **튜닝 값은 SerializeField로** 빼서 인스펙터 조절
 - **상태 전환 감지(edge detection)** — 지속 상태가 아니라 변화 순간에 반응
 - **지금 필요한 만큼만, 필요하면 확장**
+- **블랙보드는 공유 지식, 경계는 개인 상태** — 같은 정보를 알아도 직접 보거나 들은 적만 긴장한다
+- **값을 바꾸는 입구는 하나로** — 경계는 `RaiseAlert`로만 올리고, 내부 변경용 `SetAlert`는 private
 
 ---
 
-## 6. 다음 작업 제안
+## 6. 다음 작업
 
-가장 자연스러운 다음 단계는 **감지 메인 로직 완성**:
-1. 거리 체크를 플레이어 직접 참조로 단순화 (targetLayer 제거)
-2. 세 함수를 엮는 CheckVision() 작성 — `_wasVisible` 상태 전환 감지 포함
-3. 주기적 실행(코루틴 또는 타이머)
-4. ReportSighting/ReportLostSight 연결 → 첫 실제 테스트(추격자가 플레이어를 보고 CatchPlayer로 전환해 추격 시작)
+### 1순위: 근처 적에게 발견 지점 알리기
+지금은 한 적에게 들키면 같은 차원의 다른 적도 맵 어디에 있든 곧장 추격한다
+(`HorrorChaserAgent.BuildWorldState`의 `playerVisible = bb.PlayerCurrentlyVisible && CanSeePlayerNow()`).
+목표: **본 적만 추격**, 보지 못했지만 **같은 차원에서 발견한 적 근처에 있는 적은 발견 지점으로 이동해 수색**, 다른 차원은 영향 없음.
 
-이후 소리 시스템(SoundType 클래스/ScriptableObject) 구현.
+| 단계 | 파일 | 할 일 |
+|---|---|---|
+| 1 | `SquadBlackboard` | 묻는 함수 두 개: "이 적이 보고 있는가"(`Contains`), "이 적 근처(반경)에서 같은 차원의 **다른** 적이 보고 있는가" |
+| 2 | `ChaserContext` | "제보받은 위치" 칸: 있는가(`bool`), 위치(`Vector3`). 블랙보드 `LastPlayerPosition`은 다른 차원 소리가 덮어쓸 수 있어 **복사**해 둔다 |
+| 3 | `HorrorChaserAgent` | 반경 `[SerializeField]` 추가, `playerVisible`을 1번의 첫 함수로, 둘째 함수가 true면 2번 칸에 위치 복사, 새 fact와 `GoalIsRelevant` 조건 |
+| 4 | `ChaserGoals` | 새 목표 (우선순위 100과 50 사이, 예: 75). `ChaserGoals` 주석의 "last-known position" 설명도 정리 |
+| 5 | `ChaserActions` | `MoveToSound`/`SearchSoundArea`를 본뜬 행동 두 개, 끝나면 2번 칸을 비움. `Build()`에 등록 |
+
+**정할 값**: "근처" 반경(시야 22m → 30~40m 추천), 제보받은 적의 경계 단계(Alerted 13m/s / Suspicious 9m/s)
+
+### 그다음 후보
+- **놓친 자리 수색**: 본 적이 플레이어를 놓친 순간에도 2번 칸에 마지막 위치를 적으면, 횃불 던지기·차원 이동으로 추격이 순식간에 끝나는 문제가 줄어듦
+- 소리 기억을 적별로 나누기 (위 "알려진 문제" 참고)
+- 차원별 벽 → 차원별 레이어, 오브젝트 보이기/숨기기, 차원별 길찾기 격자 (지형 분리는 그 뒤)
