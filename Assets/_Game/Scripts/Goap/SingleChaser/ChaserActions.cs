@@ -71,7 +71,7 @@ namespace Squad
                 return true;
 
             Vector3 target = ctx.Player.position;
-            bool arrived = ctx.Locomotion.MoveTo(target, ctx.CatchRadius, ctx.Blackboard.Alert);
+            bool arrived = ctx.Locomotion.MoveTo(target, ctx.CatchRadius, ctx.Alert.Level);
 
             /// 잡았다는 것은 플레이어에게 충분히 접근했고 동시에 플레이어가 보이는 상황
             /// 만약 적과 플레이어가 서로 다른 차원에 있다면,
@@ -117,7 +117,7 @@ namespace Squad
         public override bool Perform(ChaserContext ctx)
         {
             Vector3 soundPosition = ctx.Blackboard.LastSoundPosition;
-            bool arrived = ctx.Locomotion.MoveTo(soundPosition, ctx.ArriveRadius, ctx.Blackboard.Alert);
+            bool arrived = ctx.Locomotion.MoveTo(soundPosition, ctx.ArriveRadius, ctx.Alert.Level);
 
             // 경로가 없을 경우의 방어 코드.
             if (!ctx.Locomotion.HasValidPath)
@@ -206,7 +206,7 @@ namespace Squad
             // planning cycle; the next replan will simply wander again unless a
             // higher-priority goal (chase / investigate) has become available.
             Vector3 target = ctx.Locomotion.GetWanderTarget();
-            bool arrived = ctx.Locomotion.MoveTo(target, ctx.ArriveRadius, ctx.Blackboard.Alert);
+            bool arrived = ctx.Locomotion.MoveTo(target, ctx.ArriveRadius, ctx.Alert.Level);
             // 마찬가지로 배회 장소에 도착하면
             // 또 다시 배회하지 않도록 장소 제거
             if (arrived || !ctx.Locomotion.HasValidPath)

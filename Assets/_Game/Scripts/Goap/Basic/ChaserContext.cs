@@ -18,8 +18,6 @@ namespace Squad
     /// </summary>
     public class ChaserContext
     {
-        // 이 정보 꾸러미를 소유한 추격자.
-        public SquadAgent Agent;
         // 자신이 사용할 공유 칠판.
         public SquadBlackboard Blackboard;
         // 자신의 Transform.
@@ -28,7 +26,9 @@ namespace Squad
         public Transform Player;
         // 자신의 차원 이름표.
         public DimensionMember Member;
-        // 적의 이동을 담당하는 컴포넌트.
+        // 자신의 경계 상태.
+        public ChaserAlert Alert;
+        // 자신의 이동을 담당하는 컴포넌트.
         public ChaserLocomotion Locomotion;
         // ReachPlayer가 사용하는 잡는 판정 거리.
         public float CatchRadius;

@@ -1,3 +1,4 @@
+#if false // 다중 추격자 데모: 지금은 쓰지 않아 컴파일에서 뺀다. 다시 쓰려면 이 줄과 맨 아래 #endif를 지운다.
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -139,3 +140,4 @@ namespace Squad
 
     public enum ChaserPersonality { Aggressive, Ambusher, Searcher }
 }
+#endif

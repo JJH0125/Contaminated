@@ -65,11 +65,11 @@ namespace Squad
             /// 인스펙터에서 설정된 값을 토대로, 자신의 문서를 만든다.
             _ctx = new ChaserContext
             {
-                Agent = null, // MultipleChaser일 경우에만 채워넣는 필드
                 Blackboard = SquadBlackboard.Instance,
                 Self = transform,
                 Player = player,
                 Member = enemy,
+                Alert = GetComponent<ChaserAlert>(),
                 Locomotion = Locomotion,
                 CatchRadius = catchRadius,
                 ArriveRadius = arriveRadius,

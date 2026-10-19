@@ -18,7 +18,7 @@ namespace Squad
         [Tooltip("소리의 지속시간(초)")]
         [SerializeField] private float duration;
         [Tooltip("소리를 들은 적이 취할 경계 단계")]
-        [SerializeField] private SquadBlackboard.AlertLevel alert;
+        [SerializeField] private AlertLevel alert;
         [Tooltip("소리가 차원을 초월하는지")]
         [SerializeField] private bool canCrossDimension;
         [Tooltip("소리가 날 때 재생할 효과음. 비워두면 적에게만 들리고 플레이어에게는 들리지 않는다.\n" +
@@ -28,12 +28,12 @@ namespace Squad
         public string Name => name;
         public float Radius => radius;
         public float Duration => duration;
-        public SquadBlackboard.AlertLevel Alert => alert;
+        public AlertLevel Alert => alert;
         public bool CanCrossDimension => canCrossDimension;
         public AudioClip Clip => clip;
 
         public Sound(string name, float radius, float duration,
-        SquadBlackboard.AlertLevel alert, bool canCrossDimension)
+        AlertLevel alert, bool canCrossDimension)
         {
             this.name = name;
             this.radius = radius;

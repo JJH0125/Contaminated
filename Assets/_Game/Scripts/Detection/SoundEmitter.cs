@@ -28,6 +28,9 @@ namespace Squad
             int count = Physics.OverlapSphereNonAlloc(
                 position, sound.Radius, _hits, enemyLayer, QueryTriggerInteraction.Ignore);
 
+            // ReportSound는 한 명이라도 소리를 들어야 호출한다.
+            bool AnyOneHeard = false;
+
             // 반경 안에 있다고 모두 들을 수 있는 건 아니기 때문에
             // 차원을 관통하지 못하는 소리는 같은 차원의 적이 있어야만 보고한다.
             // (다른 차원의 적만 반경 안에 있을 때 보고하면, 블랙보드를 공유하는
@@ -36,10 +39,13 @@ namespace Squad
             {
                 if (CanHear(_hits[i], sound, dimension))
                 {
-                    SquadBlackboard.Instance.ReportSound(position, sound, dimension, source);
-                    return;
-                }
+                    AnyOneHeard = true;
+                    _hits[i].GetComponentInParent<ChaserAlert>()?.RaiseAlert(sound.Alert);
+                }                
             }
+            
+            if (AnyOneHeard)
+                    SquadBlackboard.Instance.ReportSound(position, sound, dimension, source);
         }
 
         private static bool CanHear(Collider enemy, Sound sound, Dimension dimension)

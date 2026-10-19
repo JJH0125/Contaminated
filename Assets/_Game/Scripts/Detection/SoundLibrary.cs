@@ -18,15 +18,15 @@ namespace Squad
         // Resources 폴더에서 asset 파일을 찾지 못했을 때 불러오는 기본값.
         [Header("○ 튜닝 값 — 자유롭게 조절")]
         [Tooltip("Walk 키를 누르고 천천히 걸을 때의 발소리")]
-        [SerializeField] private Sound walking = new Sound("Walking", 4f, 0f, SquadBlackboard.AlertLevel.Suspicious, false);
+        [SerializeField] private Sound walking = new Sound("Walking", 4f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("기본 이동(뛰기) 발소리")]
-        [SerializeField] private Sound running = new Sound("Running", 13f, 0f, SquadBlackboard.AlertLevel.Suspicious, false);
+        [SerializeField] private Sound running = new Sound("Running", 13f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("작동 중인 발전기 소리")]
-        [SerializeField] private Sound generator = new Sound("Generator", 45f, 6f, SquadBlackboard.AlertLevel.Alerted, true);
+        [SerializeField] private Sound generator = new Sound("Generator", 45f, 6f, AlertLevel.Alerted, true);
         [Tooltip("미끼 소리")]
-        [SerializeField] private Sound decoy = new Sound("Decoy", 30f, 0f, SquadBlackboard.AlertLevel.Suspicious, false);
+        [SerializeField] private Sound decoy = new Sound("Decoy", 30f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("플레이어가 차원을 넘어 도착한 자리에서 나는 소리. 도착한 차원의 적만 들어야 하므로 차원을 관통하지 않게 둔다")]
-        [SerializeField] private Sound dimensionShift = new Sound("DimensionShift", 25f, 0f, SquadBlackboard.AlertLevel.Suspicious, false);
+        [SerializeField] private Sound dimensionShift = new Sound("DimensionShift", 25f, 0f, AlertLevel.Suspicious, false);
 
         public Sound Walking => walking;
         public Sound Running => running;

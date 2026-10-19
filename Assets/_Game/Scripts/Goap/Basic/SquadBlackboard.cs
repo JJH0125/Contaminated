@@ -13,25 +13,8 @@ namespace Squad
     /// to its own squad's blackboard.
     /// </summary>
     public class SquadBlackboard : MonoBehaviour
-    {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [SerializeField]
-        [Tooltip("적이 Alerted에서 Suspicious로 다운되기까지 걸리는 시간")]
-        private float AlertedToSuspiciousTime = 5f;
-        [SerializeField]
-        [Tooltip("적이 Suspicious에서 Calm으로 다운되기까지 걸리는 시간")]
-        private float SuspiciousToCalmTime = 5f;
-        
+    {        
         public static SquadBlackboard Instance { get; private set; }
-        // 3가지 경계 상태 : Calm < Suspicious < Alerted
-        public enum AlertLevel { Calm, Suspicious, Alerted }
-
-        // **** 경계 상태 정보 ****
-        
-        // 적의 경계 상태 (기본값 : Calm)
-        public AlertLevel Alert { get; private set; } = AlertLevel.Calm;
-        // 현재 경계 상태에 머문 시간
-        private float TimeInAlertState;
 
         // **** 시야에 대한 정보 ****
 
@@ -43,8 +26,6 @@ namespace Squad
         // 플레이어가 마지막까지 있었던 위치
         public Vector3 LastPlayerPosition { get; private set; }
         /// 플레이어가 마지막으로 보인 뒤 지난 시간
-        /// 지금은 상태 감소를 TimeInAlertState가 맡기 때문에
-        /// 사용하지 않지만 추후 사용될 여지 있음
         public float TimeSinceLastSeen { get; private set; } = Mathf.Infinity;
 
         // --- Sound facts (for the InvestigateSound goal) ---
@@ -87,30 +68,10 @@ namespace Squad
             _investigateCompleted.Clear();
         }
 
-        private void Update()
+        void Update()
         {
             if (!PlayerCurrentlyVisible)
                 TimeSinceLastSeen += Time.deltaTime;
-            TimeInAlertState += Time.deltaTime;
-
-            /// 시간이 지남에 따라 경계 상태를 서서히 품
-            /// Alerted → Suspicious
-            if (Alert == AlertLevel.Alerted && 
-            TimeInAlertState > AlertedToSuspiciousTime)
-                SetAlert(AlertLevel.Suspicious);
-            /// Suspicious → Calm
-            else if (Alert == AlertLevel.Suspicious && 
-            TimeInAlertState > SuspiciousToCalmTime)
-                SetAlert(AlertLevel.Calm);
-        }
-
-        /// 현재 Alert 상태를 바꾸고 TimeInAlertState를 초기화한다.
-        private void SetAlert(AlertLevel level)
-        {
-            if (Alert == level)
-                return;
-            Alert = level;
-            TimeInAlertState = 0f;
         }
 
         /// 플레이어가 시야에 들어왔을 때
@@ -119,10 +80,8 @@ namespace Squad
         {
             // 이 적이 플레이어를 보기 시작했다
             _seeingEnemies.Add(enemy);
-
             TimeSinceLastSeen = 0f;
             LastPlayerPosition = playerPosition;
-            SetAlert(AlertLevel.Alerted);
         }
 
         /// 플레이어가 시야에서 사라졌을 때
@@ -152,14 +111,6 @@ namespace Squad
             // 이미 조사한 것의 소리라면 아무것도 하지 않는다
             if (source != null && _investigateCompleted.Contains(source))
                 return;
-            
-            // 더 높은 레벨의 소리를 들었다면 격상시킨다.
-            if (sound.Alert > Alert)
-                SetAlert(sound.Alert);
-            // 같은 레벨의 소리를 들었다면 타이머만 유지한다.
-            else if (sound.Alert == Alert)
-                TimeInAlertState = 0f;
-            // 더 낮은 소리에는 반응하지 않고 아무 행동도 취하지 않는다.
             
             HasSound = true;
             LastSoundPosition = soundPosition;

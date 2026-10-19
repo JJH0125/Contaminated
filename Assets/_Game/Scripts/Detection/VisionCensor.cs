@@ -178,8 +178,11 @@ namespace Squad
                 PlaySpottedSound();
 
             if (canSee)
-                // 플레이어가 시야에 있으면, 매번 호출하여 그 위치를 업데이트
+                // 플레이어가 시야에 있으면, 매번 호출하여 그 위치를 업데이트하고 경계 상태를 Alerted로 격상
+                {
                 SquadBlackboard.Instance.ReportSighting(enemy, target.position);
+                gameObject.GetComponent<ChaserAlert>().RaiseAlert(AlertLevel.Alerted);
+                }
             else
 
                 if (visibleJustBefore)

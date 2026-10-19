@@ -110,7 +110,7 @@ namespace Squad
         /// 현재 경계 단계(alert)에 따라 이동 속도가 달라진다
         /// (Calm/Suspicious/Alerted 순으로 점점 빨라짐).
         /// </summary>
-        public bool MoveTo(Vector3 target, float arriveRadius, SquadBlackboard.AlertLevel alert)
+        public bool MoveTo(Vector3 target, float arriveRadius, AlertLevel alert)
         {
             // 도착을 확인하면 true를 return.
             Vector3 flatSelf = Flat(Position);
@@ -137,10 +137,10 @@ namespace Squad
             return false;
         }
 
-        private float MoveSpeedFor(SquadBlackboard.AlertLevel alert) => alert switch
+        private float MoveSpeedFor(AlertLevel alert) => alert switch
         {
-            SquadBlackboard.AlertLevel.Calm => calmMoveSpeed,
-            SquadBlackboard.AlertLevel.Suspicious => suspiciousMoveSpeed,
+            AlertLevel.Calm => calmMoveSpeed,
+            AlertLevel.Suspicious => suspiciousMoveSpeed,
             _ => alertedMoveSpeed,
         };
 
