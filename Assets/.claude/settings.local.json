@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//c/Users/user/Desktop/유니티/3D 연습/**)",
-      "Read(//c/Users/user/Desktop/유니티/3D 연습/ProjectSettings/**)"
-    ]
-  }
-}
