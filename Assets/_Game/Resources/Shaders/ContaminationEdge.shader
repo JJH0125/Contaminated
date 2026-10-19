@@ -3,7 +3,9 @@
 //
 // 불 = 정화. 불이 없으면 오염이 스며들고, 불을 다시 들면 오염이 타서 걷힌다.
 // 이미지 파일 없이 수식으로만 만든다.
-//   _Chill     화면 색이 살짝 차가운 톤으로 기운다. "춥다"고 말하지 않고 색 온도로만 느끼게 한다
+//   _Chill     가장자리 쪽 색이 살짝 차가운 톤으로 기운다. "춥다"고 말하지 않고 색 온도로만 느끼게 한다
+//
+// 모든 효과는 화면 가장자리 띠 안에서만 일어나고, 가운데는 원래 화면 그대로 둔다. (산만하지 않게)
 //   _Fog       바이저 김서림. 가장자리부터 뿌옇게 흐려지고 물방울이 맺힌다
 //   _Coverage  오염 결정. 가장자리에서 가지를 치며 자라 들어온다. 흰빛 섞인 회색 바탕에 바이저와 같은 검은 핏줄
 //              (색을 쓰지 않아서, 나중에 Fake를 흑백으로 바꿔도 "색은 불뿐" 규칙과 어긋나지 않는다)
@@ -28,8 +30,10 @@ Shader "Hidden/Custom/ContaminationEdge"
 
         // 오염 결정이 가장 깊이 들어올 때의 깊이 (화면 높이에 대한 비율). 16:9 화면에서 넓이의 약 3분의 1이다.
         static const float MaxDepth = 0.13;
-        // 김서림이 가장 깊이 들어올 때의 깊이
-        static const float FogDepth = 0.32;
+        // 김서림이 가장 깊이 들어올 때의 깊이. 화면 가운데는 건드리지 않도록 가장자리 띠 안에서만 낀다.
+        static const float FogDepth = 0.16;
+        // 차가운 색 톤이 드는 가장자리 띠의 폭. 이보다 안쪽(화면 가운데)은 색이 그대로다.
+        static const float ChillDepth = 0.25;
 
         float Hash(float2 p)
         {
@@ -79,7 +83,9 @@ Shader "Hidden/Custom/ContaminationEdge"
             // ── 1. 차가운 색 온도 ──
             float luminance = dot(scene, float3(0.299, 0.587, 0.114));
             float3 cold = lerp(scene, luminance.xxx, 0.25) * float3(0.86, 0.95, 1.08);
-            float3 color = lerp(scene, cold, _Chill);
+            // 가장자리에서만 차가워지고, 안쪽으로 갈수록 원래 색으로 돌아온다.
+            float chillMask = _Chill * (1.0 - smoothstep(0.0, ChillDepth, edge));
+            float3 color = lerp(scene, cold, chillMask);
 
             // ── 2. 바이저 김서림 ──
             float fogField = edge + (Fbm(p * 3.0) - 0.5) * 0.12;
@@ -98,7 +104,7 @@ Shader "Hidden/Custom/ContaminationEdge"
                 blur += SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv + float2( r, -r * aspect) * 0.7).rgb;
                 blur += SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv + float2(-r, -r * aspect) * 0.7).rgb;
                 blur /= 9.0;
-                blur = lerp(blur, cold, _Chill);
+                blur = lerp(blur, cold, chillMask);
 
                 // 뿌연 막과 맺힌 물방울
                 float3 haze = float3(0.62, 0.66, 0.70);

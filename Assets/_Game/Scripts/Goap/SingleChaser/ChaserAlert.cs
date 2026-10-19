@@ -16,7 +16,7 @@ namespace Squad
         private float AlertedToSuspiciousTime = 5f;
         [SerializeField]
         [Tooltip("적이 Suspicious에서 Calm으로 다운되기까지 걸리는 시간")]
-        private float SuspiciousToCalmTime = 5f;
+        private float SuspiciousToCalmTime = 8f;
 
         // 현재 경계 상태 (기본값 : Calm)
         public AlertLevel Level { get; private set; } = AlertLevel.Calm;

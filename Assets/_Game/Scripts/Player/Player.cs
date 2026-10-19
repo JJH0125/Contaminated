@@ -39,6 +39,12 @@ public class Player : MonoBehaviour
 
     /// <summary>지금 달리고 있는가 (움직이는 중이고 걷기가 아님). 횃불 게이지가 더 빨리 닳는 데 쓴다.</summary>
     public bool IsRunning => !isWalk && horizontal != Vector3.zero;
+
+    /// <summary>
+    /// true인 동안 이동과 회전을 멈춘다. 돌을 줍는 동작처럼 제자리에서 해야 하는 동작이 켜고 끈다(StoneHolder).
+    /// 중력은 계속 받는다.
+    /// </summary>
+    public bool MovementLocked { get; set; }
     /// 플레이어가 속한 차원. 게임 시작 시 항상 Real 차원.
     public Dimension myDimension { get; private set; } = Dimension.Real;
     private Transform cameraTransform;
@@ -104,6 +110,8 @@ public class Player : MonoBehaviour
     {
         horizontal = (cameraRight * X_Axis + cameraForward * Z_Axis).normalized;
         horizontal *= isWalk ? walkSpeed : moveSpeed;
+        if (MovementLocked)
+            horizontal = Vector3.zero;
 
         Vector3 velocity = horizontal + Vector3.up * Y_velocity;
         controller.Move(velocity * Time.deltaTime);
@@ -139,7 +147,7 @@ public class Player : MonoBehaviour
     void Turn()
     {
         // 입력이 없으면 회전하지 않음 (horizontal이 아니라 입력을 직접 확인)
-        if (X_Axis == 0f && Z_Axis == 0f)
+        if (MovementLocked || (X_Axis == 0f && Z_Axis == 0f))
             return;
 
         Vector3 lookDir = horizontal;

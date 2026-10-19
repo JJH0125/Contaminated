@@ -80,6 +80,12 @@ namespace Squad
             // 플레이어를 끄면 입력이 막히고, 카메라 앞을 플레이어 모델이 가리는 일도 없다.
             player.gameObject.SetActive(false);
 
+            // 함께 쫓아오던 다른 적들이 화면에 끼어들지 않도록, 잡은 적만 남기고 모두 끈다.
+            // (Stage와 함께 사라지므로 다시 켤 필요는 없다)
+            foreach (HorrorChaserAgent other in FindObjectsOfType<HorrorChaserAgent>())
+                if (other.gameObject != gameObject)
+                    other.gameObject.SetActive(false);
+
             GetCameraPose(out _, out Vector3 position, out Quaternion rotation);
 
             Follow follow = Camera.main != null ? Camera.main.GetComponent<Follow>() : null;

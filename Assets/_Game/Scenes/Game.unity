@@ -10016,6 +10016,7 @@ MonoBehaviour:
   pauseUI: {fileID: 1886223790}
   gameOverUI: {fileID: 17366653}
   resultUI: {fileID: 53587536}
+  openExitAtStart: 1
   totalRounds: 5
 --- !u!1 &170286575
 GameObject:
@@ -77305,6 +77306,8 @@ MonoBehaviour:
   m_AfterStackBundles:
   - assemblyQualifiedName: Squad.CctvNoise, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
       PublicKeyToken=null
+  - assemblyQualifiedName: Squad.ContaminationEdge, Assembly-CSharp, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
 --- !u!1 &1402606084
 GameObject:
   m_ObjectHideFlags: 0

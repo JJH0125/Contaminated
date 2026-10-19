@@ -82,6 +82,16 @@ namespace Squad
         [Tooltip("모닥불에서 이 거리(m) 안에 있는 나무와 풀을 치워서 모닥불이 잘 보이게 한다. 0이면 치우지 않는다")]
         [SerializeField] private float campfireClearRadius = 12f;
 
+        [Header("○ 돌 (미끼)")]
+        [Tooltip("돌로 쓸 모델(프리팹). 여러 개를 넣으면 놓을 때마다 그중 하나를 고른다. 비워 두면 돌을 놓지 않는다")]
+        [SerializeField] private GameObject[] stoneModels;
+        [Tooltip("라운드마다 맵 곳곳에 놓을 돌의 개수")]
+        [SerializeField] private int stoneCount = 20;
+        [Tooltip("돌의 크기(m). 모델의 가장 긴 변이 이 길이가 되도록 맞춘다")]
+        [SerializeField] private float stoneSize = 1f;
+        [Tooltip("돌끼리 적어도 이만큼(m)은 떨어지게 한다")]
+        [SerializeField] private float stoneSpacing = 12f;
+
         // 조건에 맞는 자리가 나올 때까지 다시 뽑는 최대 횟수
         private const int MaxTries = 300;
         // Forest Map Tool이 나무와 풀을 심어 두는 씬 오브젝트의 이름
@@ -118,6 +128,7 @@ namespace Squad
             PlaceEnemies(playerSpot);
             // 모닥불은 자리가 조금 달라져도 상관없으므로, 중요한 것들을 먼저 놓은 뒤 남은 자리에 놓는다.
             PlaceCampfires();
+            PlaceStones();
         }
 
         // ── 고정 배치 ────────────────────────────────────────────────
@@ -235,6 +246,54 @@ namespace Squad
         }
 
         // 모닥불을 지형 전체에 서로 떨어뜨려 놓고, 그 주변의 나무와 풀을 치운다.
+        /// <summary>
+        /// 미끼로 쓸 돌을 맵 곳곳에 놓는다. 돌 모델을 복제해서 Stage의 자식으로 두므로 라운드가 끝나면 함께 사라진다.
+        /// 모델마다 크기가 달라도 가장 긴 변이 stoneSize가 되도록 맞추고, 하나하나 방향과 크기를 조금씩 바꿔 단조롭지 않게 한다.
+        /// </summary>
+        private void PlaceStones()
+        {
+            if (stoneModels == null || stoneModels.Length == 0)
+                return;
+
+            var stoneSpots = new List<Vector3>();
+            for (int n = 0; n < stoneCount; n++)
+            {
+                GameObject model = stoneModels[Random.Range(0, stoneModels.Length)];
+                if (model == null)
+                    continue;
+
+                Vector3 spot = _center;
+                bool found = false;
+                for (int i = 0; i < MaxTries && !found; i++)
+                {
+                    spot = _center + new Vector3(
+                        Random.Range(-_halfExtent, _halfExtent), 0f, Random.Range(-_halfExtent, _halfExtent));
+                    found = IsUsable(spot) && IsFarFromPlaced(spot, objectSpacing * 0.5f);
+                    foreach (Vector3 other in stoneSpots)
+                        if (FlatDistance(spot, other) < stoneSpacing)
+                            found = false;
+                }
+                if (!found)
+                    continue;
+
+                GameObject stoneObject = Instantiate(model, transform);
+                stoneObject.name = "Stone";
+                stoneObject.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+
+                // 가장 긴 변이 stoneSize가 되도록 맞춘다.
+                Renderer body = stoneObject.GetComponentInChildren<Renderer>();
+                float longest = body != null ? Mathf.Max(body.bounds.size.x, body.bounds.size.y, body.bounds.size.z) : 1f;
+                if (longest > 0.0001f)
+                    stoneObject.transform.localScale *= stoneSize / longest * Random.Range(0.8f, 1.2f);
+
+                // 돌이 땅에 놓였을 때의 높이는 Stone이 크기를 재서 정한다.
+                Stone stone = stoneObject.AddComponent<Stone>();
+                PlaceOnGround(stoneObject.transform, spot, 0f);
+                stone.SnapToGround();
+                stoneSpots.Add(spot);
+            }
+        }
+
         private void PlaceCampfires()
         {
             var campfireSpots = new List<Vector3>();
