@@ -21,10 +21,12 @@ namespace Squad
         // 현재 플레이어를 보고 있는 적들
         private readonly HashSet<DimensionMember> _seeingEnemies = new();
 
-        // 플레이어가 지금 보이는지 여부
+        // 플레이어가 지금 적에 의해 보이는지 여부
         public bool PlayerCurrentlyVisible => _seeingEnemies.Count > 0;
-        // 플레이어가 마지막까지 있었던 위치
+        // 마지막으로 보인 플레이어의 위치
         public Vector3 LastPlayerPosition { get; private set; }
+        // 마지막으로 보인 플레이어가 이동하던 방향
+        public Vector3 LastPlayerDirection { get; private set; }
         /// 플레이어가 마지막으로 보인 뒤 지난 시간
         public float TimeSinceLastSeen { get; private set; } = Mathf.Infinity;
 
@@ -93,6 +95,9 @@ namespace Squad
             // 이 적이 플레이어를 더 이상 보지 않는다
             _seeingEnemies.Remove(enemy);
         }
+
+        /// 이 적이 플레이어를 보고 있는가?
+        public bool IsSeeingPlayerNow(DimensionMember enemy) => _seeingEnemies.Contains(enemy);
 
         /// <summary>
         /// Report a heard sound (footstep, generator, etc.) — softer than a

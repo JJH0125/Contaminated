@@ -37,5 +37,9 @@ namespace Squad
         // 한 WanderStep 완료 후 다음 WanderStep 시작 전 대기하는 최소/최대 시간(이 범위에서 매번 랜덤 선택).
         public float WanderPauseMin;
         public float WanderPauseMax;
+        // 다른 적이 플레이어를 발견했다는 신호를 받았는가
+        public bool HasSignal;
+        // 그 신호가 가리키는 위치
+        public Vector3 SignalPosition;
     }
 }

@@ -40,12 +40,8 @@ namespace Squad
         /// 'goal의 Facts가 내 Facts에 모두 있는가?'
         /// 즉 'goal의 모든 요소를 만족하는가?' 를 return한다.
         /// 호출되는 때는 총 2가지.
-        /// 1. 현재 상태가 최종 목표의 상태인가?를 검사할 때,
-        /// 2. 이 행동을 할 수 있는가?를 가리기 위해
-        /// 현재 상태가 전제조건과 일치하는지 검사할 때
-        /// </summary>
-        /// <param name="goal"></param>
-        /// <returns></returns>
+        /// 1. 현재 상태가 최종 목표의 상태인가?를 검사할 때
+        /// 2. 이 행동을 할 수 있는가?를 가리기 위해 현재 상태가 전제조건과 일치하는지 검사할 때
         public bool Matches(WorldState goal)
         {
             // || 연산자는 조건이 여러 개일 때 앞 조건이 true로 정해지면
@@ -109,14 +105,12 @@ namespace Squad
         public abstract bool Perform(ChaserContext ctx);
     }
 
-    /// <summary>
-    /// 적이 달성하고자 하는 목표. 목표의 이름, 상태, 우선순위 값이 있다
-    /// </summary>
+    /// 적이 달성하고자 하는 목표. 목표의 이름, 우선순위 값, 목표를 달성했을 때의 state 값이 있다.
     public class Goal
     {
         public string Name;
-        public WorldState Desired = new WorldState();
         public float Priority;
+        public WorldState Desired = new WorldState();
     }
 
     /// <summary>

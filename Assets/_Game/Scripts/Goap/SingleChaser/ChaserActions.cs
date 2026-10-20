@@ -42,9 +42,16 @@ namespace Squad
                 // ChaserGoals와 달리 각 Action들이 서로 다른 실행 코드를 가지고 있어
                 // GoapAction과 상속 구조를 띄기 때문에,
                 // 자식 클래스들의 인스턴스를 생성하여 List에 담아 반환한다.
+
+                // 습격
                 new ReachPlayer(),
+                // 발견 신호 조사
+                new MoveToSignal(),
+                new SearchSignalArea(),
+                // 들은 소리 조사
                 new MoveToSound(),
                 new SearchSoundArea(),
+                // 배회
                 new WanderStep()
             };
         }
@@ -98,6 +105,71 @@ namespace Squad
                 return true;
             }
                 
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 발견 신호 조사를 목표로 하는 첫 번째 Action
+    /// </summary>
+    public class MoveToSignal : GoapAction
+    {
+        public MoveToSignal()
+        {
+            Name = "MoveToSignal";
+            Preconditions.Facts["heardSignal"] = true;
+            Effects.Facts["atSignalLocation"] = true;
+        }
+
+        public override bool Perform(ChaserContext ctx)
+        {
+            Vector3 signalPosition = ctx.Blackboard.LastSignalPosition;
+            bool arrived = ctx.Locomotion.MoveTo(signalPosition, ctx.ArriveRadius, ctx.Alert.Level);
+
+            // 경로가 없을 경우의 방어 코드.
+            if (!ctx.Locomotion.HasValidPath)
+            {
+                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SignalSource);
+                ctx.Blackboard.ClearSignal();
+                return true;
+            }
+            return arrived;
+        }
+    }
+
+    /// <summary>
+    /// 발견 신 조사를 목표로 하는 두 번째 Action
+    /// </summary>
+    public class SearchSignalArea : GoapAction
+    {
+        private float _searchTimer;
+        private const float SearchDuration = 3f;
+
+        public SearchSignalArea()
+        {
+            Name = "SearchSignalArea";
+            Preconditions.Facts["atSignalLocation"] = true;
+            Effects.Facts["signalInvestigated"] = true;
+        }
+
+        public override bool Perform(ChaserContext ctx)
+        {
+            // 검색에 든 시간 추가
+            _searchTimer += Time.deltaTime;
+            ctx.Locomotion.LookAround();
+
+            // 검색을 충분히 했다면
+            if (_searchTimer >= SearchDuration)
+            {
+                // 검색에 든 시간 초기화
+                _searchTimer = 0f;
+                // 조사 완료 목록 추가
+                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SignalSource);
+                // 같은 제보를 다시 조사하지 않도록 제보 제거
+                ctx.Blackboard.ClearSignal();
+                // 완료 처리
+                return true;
+            }
             return false;
         }
     }

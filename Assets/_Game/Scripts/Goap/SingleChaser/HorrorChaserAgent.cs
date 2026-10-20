@@ -127,13 +127,14 @@ namespace Squad
         /// 9.6 수정: 블랙보드에서 가져온 시야와 소리 정보를 곧이곧대로 읽지 말고
         /// 이 추격자 또한 보고 들을 수 있었던 정보인지를 한번 검사함으로써
         /// 날 보지도 못하는 추격자가 날 인식하게 되는 버그를 수정.
+        /// 10.20 수정: 같은 차원이면 맵의 반대편에서 적이 플레이어를 발견할 경우 곧장 추격을 시작하는 버그를 수정.
         private WorldState BuildWorldState()
         {
             var bb = _ctx.Blackboard;
             var s = new WorldState();
 
             // Catch-goal facts.
-            s.Facts["playerVisible"] = bb.PlayerCurrentlyVisible && CanSeePlayerNow();
+            s.Facts["playerVisible"] = bb.IsSeeingPlayerNow(enemy);
             s.Facts["playerCaught"] = false;
 
             // Investigate-goal facts.
@@ -156,7 +157,7 @@ namespace Squad
                 // 이미 이룬 Goal은 패스
                 if (state.Matches(g.Desired))
                     continue;
-                // 관련 없는 Goal은 패스
+                // 선택할 이유가 없는 (도달 불가능한) Goal은 패스
                 if (!GoalIsRelevant(g, state))
                     continue;
                 // 우선순위 비교하여 높은 우선순위의 Goal로 갱신
@@ -167,7 +168,7 @@ namespace Squad
         }
 
         /// <summary>
-        /// 좇을 이유가 있는 Goal인가?
+        /// 선택할 이유가 있는 Goal인가?
         /// Player가 보이지 않는 상황에서 CatchPlayer를 목표로 잡아봤자
         /// 어차피 달성하지 못하기 때문에
         /// 이런 상황의 Goal이 선택되는 걸 사전에 방지하는 필터

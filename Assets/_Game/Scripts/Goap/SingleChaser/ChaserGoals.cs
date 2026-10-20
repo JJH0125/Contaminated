@@ -29,7 +29,8 @@ namespace Squad
     {
         // 우선순위가 더 높은 목표를 향해 행동.
         public const float PriorityCatch = 100f;
-        public const float PriorityInvestigate = 50f;
+        public const float PriorityInvestigateSignal = 75f;
+        public const float PriorityInvestigateSound = 50f;
         public const float PriorityWander = 1f;
 
         /// <summary>
@@ -46,13 +47,16 @@ namespace Squad
             var catchPlayer = new Goal { Name = "CatchPlayer", Priority = PriorityCatch };
             catchPlayer.Desired.Facts["playerCaught"] = true;
 
-            var investigate = new Goal { Name = "InvestigateSound", Priority = PriorityInvestigate };
-            investigate.Desired.Facts["soundInvestigated"] = true;
+            var investigateSignal = new Goal { Name = "InvestigateSignal", Priority = PriorityInvestigateSignal };
+            investigateSignal.Desired.Facts["signalInvestigated"] = true;
+
+            var investigateSound = new Goal { Name = "InvestigateSound", Priority = PriorityInvestigateSound };
+            investigateSound.Desired.Facts["soundInvestigated"] = true;
 
             var wander = new Goal { Name = "Wander", Priority = PriorityWander };
             wander.Desired.Facts["wandering"] = true;
 
-            return new List<Goal> { catchPlayer, investigate, wander };
+            return new List<Goal> { catchPlayer, investigateSignal, investigateSound, wander };
         }
     }
 }
