@@ -13,8 +13,10 @@ namespace Squad
     ///   2. 키 입력을 받아 플레이어의 차원을 바꾼다
     ///
     /// 차원 이동은 어디서든 할 수 있다. 대신 아무 때나 쓰는 탈출 버튼이 되지 않도록 세 가지 규칙이 붙는다.
-    ///   재사용 대기   한 번 넘어가면 일정 시간 동안 다시 넘어갈 수 없다
+    ///   재사용 대기   한 번 넘어가면 일정 시간(15초) 동안 다시 넘어갈 수 없다
     ///                 (쫓기다가 넘어갔다 바로 돌아오는 식으로 추격을 끊지 못하게 한다)
+    ///   머무는 시간   Fake에는 일정 시간(8초)만 머물 수 있고, 지나면 자동으로 Real로 튕겨 나온다.
+    ///                 재사용 대기는 넘어간 순간부터 세므로, 튕겨 나온 뒤 남은 시간(7초)을 더 기다려야 한다
     ///   도착 소리     넘어간 자리에서 소리가 나서, 도착한 차원의 적이 조사하러 온다 (이동의 대가)
     ///   감지 유예     넘어간 직후 잠깐은 어떤 적에게도 감지되지 않고 잡히지도 않는다
     ///                 (반대편에 적이 서 있는지 알 방법이 없으므로, 넘어가자마자 잡히는 억울한 죽음을 막는다)
@@ -28,10 +30,9 @@ namespace Squad
         [Header("○ 튜닝 값 — 자유롭게 조절")]
         [Tooltip("차원을 이동하는 키")]
         [SerializeField] private KeyCode shiftKey = KeyCode.F;
-        [Tooltip("한 번 이동한 뒤 다시 이동할 수 있을 때까지의 시간(초)")]
-        [SerializeField] private float cooldown = 12f;
-        [Tooltip("이동한 직후 적에게 감지되지 않고 잡히지도 않는 시간(초)")]
-        [SerializeField] private float undetectableTime = 1f;
+        private float cooldown => GameTuning.Instance.dimension.cooldown;
+        private float fakeStayTime => GameTuning.Instance.dimension.fakeStayTime;
+        private float undetectableTime => GameTuning.Instance.dimension.undetectableTime;
         [Tooltip("도착 소리를 들을 수 있는 적의 레이어")]
         [SerializeField] private LayerMask enemyLayer = (1 << 8) | (1 << 9);   // RealEnemy + FakeEnemy
 
@@ -41,6 +42,8 @@ namespace Squad
         // 다시 이동할 수 있게 되는 시각, 감지 유예가 끝나는 시각
         private float _readyTime;
         private float _undetectableUntil;
+        // Fake에서 Real로 튕겨 나오는 시각
+        private float _forceReturnTime;
 
         public static DimensionController Instance { get; private set; }
 
@@ -48,6 +51,9 @@ namespace Squad
         public KeyCode ShiftKey => shiftKey;
         /// 다시 이동할 수 있을 때까지 남은 시간(초). 지금 이동할 수 있으면 0.
         public float CooldownRemaining => Mathf.Max(0f, _readyTime - Time.time);
+        /// Fake에 있을 때 Real로 튕겨 나오기까지 남은 시간(초). Real에 있으면 0.
+        public float FakeTimeRemaining =>
+            player != null && player.myDimension == Dimension.Fake ? Mathf.Max(0f, _forceReturnTime - Time.time) : 0f;
 
         void Awake()
         {
@@ -77,8 +83,15 @@ namespace Squad
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
                 return;
 
+            // Fake에 머물 수 있는 시간이 지나면 의지와 상관없이 Real로 튕겨 나온다.
+            if (player.myDimension == Dimension.Fake && Time.time >= _forceReturnTime)
+            {
+                ShiftPlayerDimension(false);
+                return;
+            }
+
             if (Input.GetKeyDown(shiftKey) && CooldownRemaining <= 0f)
-                ShiftPlayerDimension();
+                ShiftPlayerDimension(true);
         }
 
         /// <summary>
@@ -112,12 +125,17 @@ namespace Squad
         public bool CanDetectPlayer(DimensionMember enemy)
             => CompareDimension(enemy) && Time.time >= _undetectableUntil;
 
-        // 키를 눌러 차원을 넘어간다. 재사용 대기와 감지 유예를 시작하고, 도착한 차원에 소리를 낸다.
-        private void ShiftPlayerDimension()
+        // 차원을 넘어간다. 감지 유예를 시작하고, 도착한 차원에 소리를 낸다.
+        // byPlayer: 키를 눌러 넘어간 것이면 true. 이때만 재사용 대기를 새로 시작한다.
+        //           (Fake에서 튕겨 나올 때는 넘어갈 때 시작한 대기가 그대로 이어진다)
+        private void ShiftPlayerDimension(bool byPlayer)
         {
             SwitchPlayerDimension();
 
-            _readyTime = Time.time + cooldown;
+            if (byPlayer)
+                _readyTime = Time.time + cooldown;
+            if (player.myDimension == Dimension.Fake)
+                _forceReturnTime = Time.time + fakeStayTime;
             _undetectableUntil = Time.time + undetectableTime;
 
             // 도착한 차원의 적만 듣는다. (소리의 값에서 차원을 관통하지 않도록 정해 둔다)

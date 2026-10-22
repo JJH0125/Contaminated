@@ -36,43 +36,27 @@ namespace Squad
         [Tooltip("숨 한 번의 소리")]
         [SerializeField] private AudioClip breathClip;
 
-        [Header("○ 크기")]
-        [Tooltip("숨소리 전체의 크기. 효과음 볼륨(SfxPlayer)에 곱해진다. 다른 효과음보다 작게 둔다")]
-        [Range(0f, 1f)]
-        [SerializeField] private float volume = 0.6f;
-        [Tooltip("평소의 크기 (전체 크기에 대한 비율). 오래 들어도 귀가 지치지 않게 작게 둔다")]
-        [Range(0f, 1f)]
-        [SerializeField] private float calmVolume = 0.35f;
-        [Tooltip("적이 아주 가까울 때의 크기")]
-        [Range(0f, 1f)]
-        [SerializeField] private float nearVolume = 0.7f;
-        [Tooltip("쫓기는 중의 크기")]
-        [Range(0f, 1f)]
-        [SerializeField] private float chasedVolume = 1f;
+        // 수치는 GameTuning 에셋의 breathing 항목에서 읽는다.
+        private float volume => GameTuning.Instance.breathing.volume;
+        private float calmVolume => GameTuning.Instance.breathing.calmVolume;
+        private float nearVolume => GameTuning.Instance.breathing.nearVolume;
+        private float chasedVolume => GameTuning.Instance.breathing.chasedVolume;
 
-        [Header("○ 숨 사이의 간격(초)")]
-        [SerializeField] private float calmGap = 1.75f;
-        [SerializeField] private float nearGap = 0.5f;
-        [SerializeField] private float chasedGap = 0.05f;
+        // 숨 사이의 간격(초)
+        private float calmGap => GameTuning.Instance.breathing.calmGap;
+        private float nearGap => GameTuning.Instance.breathing.nearGap;
+        private float chasedGap => GameTuning.Instance.breathing.chasedGap;
 
-        [Header("○ 음높이 (1이 원래 소리, 1.15를 넘기지 않는다)")]
-        [Range(0.9f, 1.15f)]
-        [SerializeField] private float calmPitch = 1f;
-        [Range(0.9f, 1.15f)]
-        [SerializeField] private float nearPitch = 1.05f;
-        [Range(0.9f, 1.15f)]
-        [SerializeField] private float chasedPitch = 1.12f;
-        [Tooltip("마지막 라운드에서 음높이를 이만큼 낮춘다. 라운드가 오를수록 고르게 낮아진다")]
-        [Range(0f, 0.1f)]
-        [SerializeField] private float lastRoundPitchDrop = 0.04f;
+        // 음높이 (1이 원래 소리, 1.15를 넘기지 않는다)
+        private float calmPitch => GameTuning.Instance.breathing.calmPitch;
+        private float nearPitch => GameTuning.Instance.breathing.nearPitch;
+        private float chasedPitch => GameTuning.Instance.breathing.chasedPitch;
+        private float lastRoundPitchDrop => GameTuning.Instance.breathing.lastRoundPitchDrop;
 
-        [Header("○ 매번 흔드는 정도")]
-        [Tooltip("음높이를 ± 이 비율만큼 흔든다")]
-        [SerializeField] private float pitchJitter = 0.03f;
-        [Tooltip("크기를 ± 이 비율만큼 흔든다")]
-        [SerializeField] private float volumeJitter = 0.1f;
-        [Tooltip("간격을 ± 이 시간(초)만큼 흔든다")]
-        [SerializeField] private float gapJitter = 0.2f;
+        // 매번 흔드는 정도
+        private float pitchJitter => GameTuning.Instance.breathing.pitchJitter;
+        private float volumeJitter => GameTuning.Instance.breathing.volumeJitter;
+        private float gapJitter => GameTuning.Instance.breathing.gapJitter;
 
         // 숨소리 파일에서 이 크기보다 작은 소리만 남은 뒷부분은 숨 길이에서 뺀다. (가장 큰 구간에 대한 비율)
         private const float TailThreshold = 0.1f;

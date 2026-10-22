@@ -24,13 +24,10 @@ namespace Squad
     [RequireComponent(typeof(PostProcessLayer))]
     public class ContaminationEdgeEffect : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("숨기기 시작한 뒤 차가운 색 톤이 다 드는 데 걸리는 시간(초)")]
-        [SerializeField] private float chillTime = 2f;
-        [Tooltip("오염 결정이 자라 들어오는 빠르기 (1초에 덮는 정도가 늘어날 수 있는 최대량)")]
-        [SerializeField] private float growSpeed = 0.5f;
-        [Tooltip("횃불을 들었을 때 김서림과 오염이 걷히는 빠르기")]
-        [SerializeField] private float burnAwaySpeed = 2f;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float chillTime => GameTuning.Instance.contaminationEdge.chillTime;
+        private float growSpeed => GameTuning.Instance.contaminationEdge.growSpeed;
+        private float burnAwaySpeed => GameTuning.Instance.contaminationEdge.burnAwaySpeed;
 
         // PostProcessLayer에 Volume 레이어가 지정되어 있지 않을 때 대신 쓸 레이어 (Unity 기본 레이어인 TransparentFX)
         private const int FallbackVolumeLayer = 1;

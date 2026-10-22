@@ -28,17 +28,25 @@ namespace Squad
         [Tooltip("플레이어")]
         [SerializeField] private Transform player;
 
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("플레이어를 게임오버 시키는 거리")]
-        [SerializeField] private float catchRadius = 3.0f;
-        [Tooltip("소리/배회 target에 접근하여 행동을 시작하는 거리")]
-        [SerializeField] private float arriveRadius = 0.6f;
-        [Tooltip("replan 하는 주기")]
-        [SerializeField] private float replanInterval = 0.4f;
-        [Tooltip("다음 Wander까지 대기 시간 (최소)")]
-        [SerializeField] private float wanderPauseMin = 1.5f;
-        [Tooltip("다음 Wander까지 대기 시간 (최대)")]
-        [SerializeField] private float wanderPauseMax = 4f;
+        // 수치는 GameTuning 에셋의 적 항목(Real 적 / Fake 적)에서 이 적의 차원에 맞는 것을 읽는다.
+        private EnemyTuning Tuning => GameTuning.Instance.EnemyFor(enemy);
+        private float catchRadius => Tuning.catchRadius;
+        private float arriveRadius => Tuning.arriveRadius;
+        private float replanInterval => Tuning.replanInterval;
+        private float wanderPauseMin => Tuning.wanderPauseMin;
+        private float wanderPauseMax => Tuning.wanderPauseMax;
+
+        // 발견 신호 (포효)
+        private float roarRadius => Tuning.roarRadius;
+        private float joinTimeout => Tuning.joinTimeout;
+
+        // 추격 겹침 (여러 적이 함께 볼 때)
+        private float interceptLeadTime => Tuning.interceptLeadTime;
+        private float interceptSpacing => Tuning.interceptSpacing;
+        private float interceptDirectRadius => Tuning.interceptDirectRadius;
+
+        // 씬에 있는 모든 추격자. 포효할 때 받을 적을 고르는 데 쓴다.
+        private static readonly List<HorrorChaserAgent> _all = new();
 
         public ChaserLocomotion Locomotion { get; private set; }
 
@@ -75,6 +83,11 @@ namespace Squad
                 ArriveRadius = arriveRadius,
                 WanderPauseMin = wanderPauseMin,
                 WanderPauseMax = wanderPauseMax,
+                Joined = false,
+                ProcessingSpotCount = 0,
+                InterceptLeadTime = interceptLeadTime,
+                InterceptSpacing = interceptSpacing,
+                InterceptDirectRadius = interceptDirectRadius
             };
 
             // Action과 Goal 불러오기
@@ -82,8 +95,94 @@ namespace Squad
             _goals = ChaserGoals.Build();
         }
 
+        private void OnEnable() => _all.Add(this);
+
+        private void OnDisable() => _all.Remove(this);
+
+        /// <summary>
+        /// 발견 신호(포효)를 보낸다. 이 적이 아무도 보지 않던 플레이어를 새로 발견했을 때 VisionCensor가 부른다.
+        /// 받는 적: 같은 차원, roarRadius 안, 자기 자신이 아님, 지금 플레이어를 보고 있지 않음.
+        /// (지금 보고 있는 적은 이미 자기 눈으로 추격 중이므로 부를 필요가 없다)
+        /// </summary>
+        public void Roar()
+        {
+            SquadBlackboard bb = SquadBlackboard.Instance;
+            if (bb == null || enemy == null)
+                return;
+
+            foreach (HorrorChaserAgent other in _all)
+            {
+                if (other == this || other.enemy == null || other.enemy.Dimension != enemy.Dimension)
+                    continue;
+                if (bb.IsSeeingPlayerNow(other.enemy))
+                    continue;
+
+                Vector3 offset = other.transform.position - transform.position;
+                offset.y = 0f;
+                if (offset.sqrMagnitude <= roarRadius * roarRadius)
+                    other.ReceiveSignal(bb.spotCount);
+            }
+        }
+
+        /// <summary>
+        /// 다른 적의 발견 신호를 받았을 때. 합류해서 발견 지점으로 가 수색한다.
+        /// 직접 본 게 아니므로 경계는 Suspicious까지만 올린다. (Alerted는 플레이어를 직접 본 적에게만)
+        /// </summary>
+        public void ReceiveSignal(int spotNumber)
+        {
+            if (_ctx == null)
+                return;
+
+            _ctx.Joined = true;
+            _ctx.ProcessingSpotCount = spotNumber;
+            if (_ctx.Alert != null)
+                _ctx.Alert.RaiseAlert(AlertLevel.Suspicious);
+
+            // 하던 일을 멈추고 바로 다시 계획을 세운다.
+            ReplanNow();
+        }
+
+        private void ReplanNow()
+        {
+            Replan();
+            _replanTimer = replanInterval;
+        }
+
+        /// <summary>
+        /// 합류한 동안 매 프레임 확인하는 것.
+        ///   - 경계가 Calm으로 내려가지 않게 Suspicious를 유지한다 (같은 단계로 올리면 타이머만 0이 된다)
+        ///   - 같은 차원에서 새 사건(플레이어를 다시 발견)이 생기면 번호를 새로 적고 그곳으로 다시 간다
+        ///   - 아무도 오랫동안(joinTimeout) 플레이어를 못 보면 합류를 풀고 돌아간다
+        /// 합류를 풀면 경계 타이머가 다시 흘러서, 한동안 Suspicious로 돌아다니다 Calm으로 내려간다.
+        /// </summary>
+        private void UpdateJoined()
+        {
+            if (!_ctx.Joined)
+                return;
+
+            SquadBlackboard bb = _ctx.Blackboard;
+            if (_ctx.Alert != null)
+                _ctx.Alert.RaiseAlert(AlertLevel.Suspicious);
+
+            if (bb.spotCount > _ctx.ProcessingSpotCount && bb.SpotDimension == enemy.Dimension)
+            {
+                _ctx.ProcessingSpotCount = bb.spotCount;
+                ReplanNow();
+                return;
+            }
+
+            if (!bb.PlayerCurrentlyVisible && bb.TimeSinceLastSeen > joinTimeout)
+            {
+                _ctx.Joined = false;
+                bb.ReleaseSearchPoints(transform.GetInstanceID());
+                ReplanNow();
+            }
+        }
+
         private void Update()
         {
+            UpdateJoined();
+
             _replanTimer -= Time.deltaTime;
 
             // replan 주기가 돌았거나
@@ -137,6 +236,12 @@ namespace Squad
             s.Facts["playerVisible"] = bb.IsSeeingPlayerNow(enemy);
             s.Facts["playerCaught"] = false;
 
+            // 발견 신호 조사(InvestigateSignal) 관련 사실.
+            // 다른 적의 신호를 받고 합류했는가. 합류는 ReceiveSignal에서 켜고, 수색을 끝내거나 시간이 지나면 끈다.
+            s.Facts["joinedSignal"] = _ctx.Joined;
+            s.Facts["atSignalLocation"] = false;
+            s.Facts["signalInvestigated"] = false;
+
             // Investigate-goal facts.
             s.Facts["heardSound"] = bb.HasSound && CanHearSoundNow();
             s.Facts["atSoundLocation"] = false;
@@ -179,6 +284,8 @@ namespace Squad
             {
                 case "CatchPlayer":
                     return Fact(s, "playerVisible");
+                case "InvestigateSignal":
+                    return Fact(s, "joinedSignal");
                 case "InvestigateSound":
                     return Fact(s, "heardSound");
                 case "Wander": // State에 관계없이 항상 이유 있는 행동
@@ -237,6 +344,48 @@ namespace Squad
                 Gizmos.DrawWireSphere(_ctx.Blackboard.LastSoundPosition, 0.4f);
                 Gizmos.DrawLine(transform.position, _ctx.Blackboard.LastSoundPosition);
             }
+
+            // 발견 신호를 받고 합류한 적: 주황색 선으로 발견 지점과 연결
+            // 발견 지점: 빨간 구, 그때 플레이어가 움직이던 방향: 빨간 선
+            if (_ctx != null && _ctx.Blackboard != null && _ctx.Blackboard.spotCount > 0)
+            {
+                Vector3 spot = _ctx.Blackboard.LastSightingPosition;
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(spot, 1.5f);
+                Gizmos.DrawLine(spot, spot + _ctx.Blackboard.LastPlayerDirection * 8f);
+
+                if (_ctx.Joined)
+                {
+                    Gizmos.color = new Color(1f, 0.5f, 0f);
+                    Gizmos.DrawLine(transform.position + Vector3.up * 2f, spot);
+                }
+            }
+
+            // 수색 지점: 노랑 = 아직 아무도 안 맡음, 주황 = 누군가 맡음(이 적이 맡았으면 선으로 연결), 초록 = 확인함
+            if (_ctx != null && _ctx.Blackboard != null)
+            {
+                int id = transform.GetInstanceID();
+                foreach (SquadBlackboard.SearchPoint point in _ctx.Blackboard.SearchPoints)
+                {
+                    Gizmos.color = point.Checked ? Color.green : point.Owner != 0 ? new Color(1f, 0.5f, 0f) : Color.yellow;
+                    Gizmos.DrawWireCube(point.Position + Vector3.up, Vector3.one * 2f);
+                    if (point.Owner == id && !point.Checked)
+                        Gizmos.DrawLine(transform.position + Vector3.up * 2f, point.Position + Vector3.up);
+                }
+            }
+
+            // 추격 역할: 곧장 쫓는 적은 빨간 선, 앞질러 가는 적은 자홍색 선과 목적지 구
+            if (_ctx != null && _ctx.ChaseRank >= 0 && CurrentActionName == "ReachPlayer")
+            {
+                Gizmos.color = _ctx.ChaseRank == 0 ? Color.red : Color.magenta;
+                Gizmos.DrawLine(transform.position + Vector3.up * 3f, _ctx.ChaseTarget + Vector3.up * 3f);
+                if (_ctx.ChaseRank > 0)
+                    Gizmos.DrawWireSphere(_ctx.ChaseTarget + Vector3.up, 1.2f);
+            }
+
+            // 포효가 닿는 범위
+            Gizmos.color = new Color(1f, 0.5f, 0f, 0.25f);
+            Gizmos.DrawWireSphere(transform.position, roarRadius);
         }
     }
 }

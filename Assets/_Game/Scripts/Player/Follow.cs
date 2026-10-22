@@ -14,20 +14,13 @@ using UnityEngine;
 ///</summary>
 public class Follow : MonoBehaviour
 {
-    [Header("○ 튜닝 값 — 자유롭게 조절")]
-    [Tooltip("내려다보는 각도(도). 클수록 위에서 수직으로 내려다본다")]
-    [Range(10f, 90f)]
-    [SerializeField] private float pitch = 35.4f;
-    [Tooltip("바라보는 방향(도). 45면 대각선 방향에서 비춘다")]
-    [SerializeField] private float yaw = 45f;
-    [Tooltip("플레이어와 카메라 사이의 거리(m)")]
-    [SerializeField] private float distance = 22f;
-    [Tooltip("가는 방향으로 카메라를 얼마나 앞서 보낼지(초). 플레이어가 이 시간 뒤에 있을 자리를 비춘다. 0이면 밀지 않는다")]
-    [SerializeField] private float lookAheadTime = 0.25f;
-    [Tooltip("카메라를 앞으로 미는 거리의 최댓값(m)")]
-    [SerializeField] private float maxLookAhead = 4f;
-    [Tooltip("미는 정도가 바뀔 때 따라가는 데 걸리는 시간(초). 클수록 느긋하게 움직인다")]
-    [SerializeField] private float lookAheadSmoothTime = 0.5f;
+    // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+    private float pitch => Squad.GameTuning.Instance.camera.pitch;
+    private float yaw => Squad.GameTuning.Instance.camera.yaw;
+    private float distance => Squad.GameTuning.Instance.camera.distance;
+    private float lookAheadTime => Squad.GameTuning.Instance.camera.lookAheadTime;
+    private float maxLookAhead => Squad.GameTuning.Instance.camera.maxLookAhead;
+    private float lookAheadSmoothTime => Squad.GameTuning.Instance.camera.lookAheadSmoothTime;
 
     private Transform target;
 

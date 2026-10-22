@@ -34,24 +34,16 @@ namespace Squad
         [Header("○ 튜닝 값 — 자유롭게 조절")]
         [Tooltip("재생할 Animator 상태 이름. 여러 개면 매번 무작위로 하나를 고른다")]
         [SerializeField] private string[] attackStates = { "Attack", "Attack Near" };
-        [Tooltip("연출 길이(초). 끝나면 게임 오버 화면으로 넘어간다")]
-        [SerializeField] private float duration = 1.4f;
-        [Tooltip("카메라가 바라볼 지점의 높이(m). 이 오브젝트의 위치 기준. 얼굴 높이에 맞춘다")]
-        [SerializeField] private float faceHeight = 1.5f;
-        [Tooltip("얼굴에서 카메라까지의 거리(m)")]
-        [SerializeField] private float cameraDistance = 1.5f;
-        [Tooltip("얼굴 높이를 기준으로 한 카메라의 높이(m). 음수면 아래에서 올려다본다")]
-        [SerializeField] private float cameraHeightOffset = 0f;
-        [Tooltip("연출 중 카메라의 시야각(도)")]
-        [SerializeField] private float fieldOfView = 60f;
+        private float duration => GameTuning.Instance.enemyBody.jumpscareDuration;
+        private float faceHeight => GameTuning.Instance.enemyBody.faceHeight;
+        private float cameraDistance => GameTuning.Instance.enemyBody.cameraDistance;
+        private float cameraHeightOffset => GameTuning.Instance.enemyBody.cameraHeightOffset;
+        private float fieldOfView => GameTuning.Instance.enemyBody.fieldOfView;
 
-        [Header("○ 얼굴 조명 — 어두운 맵에서도 얼굴이 보이도록 연출 중에만 켜진다")]
-        [Tooltip("조명의 밝기. 0이면 조명을 만들지 않는다")]
-        [SerializeField] private float lightIntensity = 2f;
-        [Tooltip("조명의 색")]
-        [SerializeField] private Color lightColor = Color.white;
-        [Tooltip("카메라 높이를 기준으로 한 조명의 높이(m). 음수면 아래에서 비춰 얼굴에 그림자가 거꾸로 진다")]
-        [SerializeField] private float lightHeightOffset = -1.5f;
+        // 얼굴 조명 — 어두운 맵에서도 얼굴이 보이도록 연출 중에만 켜진다
+        private float lightIntensity => GameTuning.Instance.enemyBody.lightIntensity;
+        private Color lightColor => GameTuning.Instance.enemyBody.lightColor;
+        private float lightHeightOffset => GameTuning.Instance.enemyBody.lightHeightOffset;
 
         /// <summary>
         /// 연출을 시작한다. 이미 잡혔거나 플레이 중이 아니면 아무 일도 하지 않는다.

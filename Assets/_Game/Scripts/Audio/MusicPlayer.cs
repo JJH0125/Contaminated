@@ -26,12 +26,9 @@ namespace Squad
         [Tooltip("게임 플레이 중 배경음")]
         [SerializeField] private AudioClip playingMusic;
 
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("배경음 볼륨")]
-        [Range(0f, 1f)]
-        [SerializeField] private float volume = 0.3f;
-        [Tooltip("곡이 바뀔 때 줄어들고 커지는 데 걸리는 시간(초)")]
-        [SerializeField] private float fadeDuration = 1f;
+        // 볼륨과 바뀌는 시간은 GameTuning 에셋의 audio 항목에서 읽는다.
+        private float volume => GameTuning.Instance.audio.musicVolume;
+        private float fadeDuration => GameTuning.Instance.audio.musicFadeDuration;
 
         private AudioSource _source;
         /// 비교할 이전 상태가 존재하지 않는, 게임 시작 첫 프레임만을 위한 bool 값.

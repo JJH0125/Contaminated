@@ -42,41 +42,25 @@ namespace Squad
         [Header("○ 손에 쥐는 자리")]
         [Tooltip("횃불을 쥘 손뼈의 이름. 켜져 있는 모델에서 찾는다")]
         [SerializeField] private string handBoneName = "mixamorig:RightHand";
-        [Tooltip("손뼈를 기준으로 한, 주먹 안쪽(횃불을 쥐는 자리)의 위치(m, 모델 Scale 1 기준). 손뼈의 축 방향 기준이다. " +
-                 "Mixamo 뼈대에서는 Y가 손가락 쪽, Z가 손바닥이 향하는 쪽, -X가 엄지 쪽이다")]
-        [SerializeField] private Vector3 handOffset = new Vector3(0f, 0.07f, 0.04f);
-        [Tooltip("손뼈를 기준으로 한 횃불의 각도. Z가 90이면 횃불의 불꽃 쪽이 엄지 방향을 향한다")]
-        [SerializeField] private Vector3 handRotation = new Vector3(0f, 0f, 120f);
-        [Tooltip("횃불에서 손으로 쥐는 지점. 횃불 프리팹의 모델 기준이다. " +
-                 "횃불 모델의 기준점은 막대의 한가운데이고 불꽃 쪽이 +Y이므로, 음수일수록 손잡이 끝 쪽을 쥔다")]
-        [SerializeField] private Vector3 gripPoint = new Vector3(0f, -0.12f, 0f);
-        [Tooltip("손뼈를 찾지 못했을 때 횃불을 드는 위치. 플레이어 오브젝트 기준 (오른쪽, 위, 앞). 플레이어 오브젝트의 위치는 발이 아니라 몸 한가운데다")]
-        [SerializeField] private Vector3 holdPosition = new Vector3(0.65f, 0.2f, 0.35f);
-        [Tooltip("손뼈를 찾지 못했을 때 횃불을 드는 각도. 플레이어 오브젝트 기준")]
-        [SerializeField] private Vector3 holdRotation = new Vector3(10f, 0f, -25f);
+        private Vector3 handOffset => GameTuning.Instance.torch.handOffset;
+        private Vector3 handRotation => GameTuning.Instance.torch.handRotation;
+        private Vector3 gripPoint => GameTuning.Instance.torch.gripPoint;
+        private Vector3 holdPosition => GameTuning.Instance.torch.holdPosition;
+        private Vector3 holdRotation => GameTuning.Instance.torch.holdRotation;
 
-        [Header("○ 손에 든 횃불의 불빛")]
-        [Tooltip("불빛의 중심을 플레이어 앞으로 얼마나 내어 둘지(m). 빛은 둥글게 퍼지지만 밝은 곳이 진행 방향으로 쏠린다")]
-        [SerializeField] private float heldLightForward = 6f;
-        [Tooltip("불빛의 높이(m). 플레이어 오브젝트 위치(발에서 1m 위) 기준")]
-        [SerializeField] private float heldLightHeight = 3f;
-        [Tooltip("손에 들고 있는 동안 불빛이 닿는 거리(m)")]
-        [SerializeField] private float heldLightRange = 22f;
+        // 손에 든 횃불의 불빛
+        private float heldLightForward => GameTuning.Instance.torch.heldLightForward;
+        private float heldLightHeight => GameTuning.Instance.torch.heldLightHeight;
+        private float heldLightRange => GameTuning.Instance.torch.heldLightRange;
 
         [Header("○ 횃불 숨기기와 온기 게이지")]
         [Tooltip("누르고 있는 동안 횃불을 숨기는 키")]
         [SerializeField] private KeyCode hideKey = KeyCode.Space;
-        [Tooltip("가득 찬 온기 게이지가 숨기고 걷는 동안 모두 닳는 데 걸리는 시간(초)")]
-        [SerializeField] private float warmthDrainTime = 8f;
-        [Tooltip("숨긴 채 달리면 게이지가 걸을 때의 몇 배 빠르기로 닳는가")]
-        [SerializeField] private float runDrainMultiplier = 1.6f;
-        [Tooltip("빈 온기 게이지가 횃불을 들고 있는 동안 모두 차는 데 걸리는 시간(초)")]
-        [SerializeField] private float warmthRecoverTime = 6f;
-        [Tooltip("넣고 꺼내는 동작의 재생 속도 배율. 2면 원래 애니메이션의 2배 빠르기다")]
-        [SerializeField] private float hideAnimationSpeed = 2f;
-        [Tooltip("넣는 동작에서 손이 주머니에 닿는 순간(초, 원래 애니메이션 기준). 넣을 때는 이 지점을 지나면 횃불이 사라지고, " +
-                 "꺼낼 때는 거꾸로 이 지점을 지나면 다시 나타난다. 재생 속도를 바꿔도 이 값은 그대로 두면 된다")]
-        [SerializeField] private float torchVanishDelay = 0.4f;
+        private float warmthDrainTime => GameTuning.Instance.torch.warmthDrainTime;
+        private float runDrainMultiplier => GameTuning.Instance.torch.runDrainMultiplier;
+        private float warmthRecoverTime => GameTuning.Instance.torch.warmthRecoverTime;
+        private float hideAnimationSpeed => GameTuning.Instance.torch.hideAnimationSpeed;
+        private float torchVanishDelay => GameTuning.Instance.torch.torchVanishDelay;
 
         /// <summary>온기 게이지 (1: 가득, 0: 다 떨어짐). 라운드마다 가득 찬 채로 시작한다.</summary>
         public static float Warmth { get; private set; } = 1f;

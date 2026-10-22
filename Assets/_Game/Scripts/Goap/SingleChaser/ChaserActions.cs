@@ -77,8 +77,16 @@ namespace Squad
             if (ctx.Player == null)
                 return true;
 
-            Vector3 target = ctx.Player.position;
+            Vector3 target = ChooseTarget(ctx);
             bool arrived = ctx.Locomotion.MoveTo(target, ctx.CatchRadius, ctx.Alert.Level);
+
+            // 앞질러 가는 목적지에 도착한 것은 잡은 것이 아니다. 실제로 플레이어 곁에 있을 때만 잡는다.
+            if (arrived)
+            {
+                Vector3 toPlayer = ctx.Player.position - ctx.Self.position;
+                toPlayer.y = 0f;
+                arrived = toPlayer.magnitude <= ctx.CatchRadius;
+            }
 
             /// 잡았다는 것은 플레이어에게 충분히 접근했고 동시에 플레이어가 보이는 상황
             /// 만약 적과 플레이어가 서로 다른 차원에 있다면,
@@ -104,46 +112,116 @@ namespace Squad
                     GameManager.Instance.GameOver();
                 return true;
             }
-                
+
             return false;
+        }
+
+        /// <summary>
+        /// 추격 겹침: 여러 적이 함께 플레이어를 보고 있으면 같은 길로 줄지어 쫓지 않게 역할을 나눈다.
+        ///   플레이어와 가장 가까운 적(순위 0)   플레이어에게 곧장 간다
+        ///   나머지(순위 1, 2, …)               몇 초 뒤 플레이어가 있을 자리로 앞질러 간다.
+        ///                                      순위마다 좌우로 번갈아 벌려(+1, -1, +2, -2칸) 서로 다른 쪽에서 다가온다
+        /// 순위는 매 프레임 거리로 다시 정하므로, 곧장 쫓던 적이 뒤처지면 더 가까운 적이 그 역할을 넘겨받는다.
+        /// 플레이어가 가까이 있거나, 멈춰 있거나, 앞질러 갈 자리가 막혀 있으면 곧장 간다.
+        /// </summary>
+        private static Vector3 ChooseTarget(ChaserContext ctx)
+        {
+            SquadBlackboard bb = ctx.Blackboard;
+            Vector3 playerPos = ctx.Player.position;
+            ctx.ChaseRank = bb != null ? bb.ChaseRank(ctx.Member, playerPos) : -1;
+            ctx.ChaseTarget = playerPos;
+
+            if (ctx.ChaseRank <= 0)
+                return playerPos;
+
+            Vector3 toPlayer = playerPos - ctx.Self.position;
+            toPlayer.y = 0f;
+            Vector3 direction = bb.LastPlayerDirection;
+            float lead = bb.LastPlayerSpeed * ctx.InterceptLeadTime;
+            if (toPlayer.magnitude <= ctx.InterceptDirectRadius || direction == Vector3.zero || lead < 1f)
+                return playerPos;
+
+            // 순위 1 → 오른쪽 1칸, 2 → 왼쪽 1칸, 3 → 오른쪽 2칸, …
+            int slot = (ctx.ChaseRank + 1) / 2;
+            float side = ctx.ChaseRank % 2 == 1 ? 1f : -1f;
+            Vector3 right = Vector3.Cross(Vector3.up, direction);
+            Vector3 ahead = playerPos + direction * lead;
+            Vector3 spread = ahead + right * (side * slot * ctx.InterceptSpacing);
+
+            // 벌린 자리가 막혀 있으면 벌리지 않은 자리, 그것도 막혀 있으면 곧장 간다.
+            Vector3 target = ctx.Locomotion.IsWalkable(spread) ? spread
+                           : ctx.Locomotion.IsWalkable(ahead) ? ahead
+                           : playerPos;
+            ctx.ChaseTarget = target;
+            return target;
         }
     }
 
     /// <summary>
-    /// 발견 신호 조사를 목표로 하는 첫 번째 Action
+    /// 발견 신호 조사를 목표로 하는 첫 번째 Action.
+    /// 다른 적이 플레이어를 본 마지막 자리(블랙보드의 LastSightingPosition)로 간다.
+    /// 목적지를 매 프레임 다시 읽으므로, 이동하는 동안 그 적이 계속 쫓으며 위치가 바뀌면 따라간다.
+    ///
+    /// 이 사건에서 처음 도착한 적이 수색 지도를 만든다. 지도가 이미 있으면(다른 적이 먼저 도착했으면)
+    /// 발견 지점까지 갈 필요 없이 바로 수색 지점을 맡으러 간다.
     /// </summary>
     public class MoveToSignal : GoapAction
     {
+        // 발견 지점에 이만큼(m) 가까워지면 도착한 것으로 본다.
+        private const float SignalArriveRadius = 5f;
+
         public MoveToSignal()
         {
             Name = "MoveToSignal";
-            Preconditions.Facts["heardSignal"] = true;
+            Preconditions.Facts["joinedSignal"] = true;
             Effects.Facts["atSignalLocation"] = true;
         }
 
         public override bool Perform(ChaserContext ctx)
         {
-            Vector3 signalPosition = ctx.Blackboard.LastSignalPosition;
-            bool arrived = ctx.Locomotion.MoveTo(signalPosition, ctx.ArriveRadius, ctx.Alert.Level);
+            SquadBlackboard bb = ctx.Blackboard;
+            if (bb.SearchPlanSpot == ctx.ProcessingSpotCount)
+                return true;
 
-            // 경로가 없을 경우의 방어 코드.
+            Vector3 target = bb.LastSightingPosition;
+            bool arrived = ctx.Locomotion.MoveTo(target, SignalArriveRadius, ctx.Alert.Level);
+
+            // 갈 수 있는 길이 없으면 합류를 풀고 끝낸다.
             if (!ctx.Locomotion.HasValidPath)
             {
-                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SignalSource);
-                ctx.Blackboard.ClearSignal();
+                ctx.Joined = false;
+                bb.ReleaseSearchPoints(ctx.Self.GetInstanceID());
                 return true;
             }
+
+            if (arrived)
+                bb.EnsureSearchPlan(ctx.ProcessingSpotCount, target, bb.LastPlayerDirection);
             return arrived;
         }
     }
 
     /// <summary>
-    /// 발견 신 조사를 목표로 하는 두 번째 Action
+    /// 발견 신호 조사를 목표로 하는 두 번째 Action. 수색 지도의 지점을 다른 적들과 나눠 맡아 수색한다.
+    ///   1. 아무도 맡지 않은 지점 중 가장 가까운 곳을 맡는다
+    ///   2. 그곳으로 가서 잠깐 둘러본 뒤 "확인함"으로 표시하고 반납한다
+    ///   3. 다음 지점을 맡는다. 남은 지점이 없으면 합류를 풀고 끝낸다
+    /// 이동하다가 다른 지점 근처를 지나가면 그 지점도 본 것으로 친다.
+    /// 합류를 풀면 경계 타이머가 다시 흘러서, 한동안 Suspicious로 돌아다니다 Calm으로 내려간다.
     /// </summary>
     public class SearchSignalArea : GoapAction
     {
-        private float _searchTimer;
-        private const float SearchDuration = 3f;
+        // 지금 맡은 지점과, 그 지점이 어느 사건의 지도에 있는 것인가
+        private SquadBlackboard.SearchPoint _point;
+        private int _pointSpot;
+        private bool _lookingAround;
+        private float _lookTimer;
+
+        // 수색 지점에 이만큼(m) 가까워지면 도착한 것으로 본다.
+        private const float PointArriveRadius = 2.5f;
+        // 수색 지점에서 둘러보는 시간(초)
+        private const float LookDuration = 1.5f;
+        // 이 거리(m) 안을 지나가면 그 지점도 본 것으로 친다.
+        private const float PassBySeeRadius = 6f;
 
         public SearchSignalArea()
         {
@@ -154,23 +232,61 @@ namespace Squad
 
         public override bool Perform(ChaserContext ctx)
         {
-            // 검색에 든 시간 추가
-            _searchTimer += Time.deltaTime;
-            ctx.Locomotion.LookAround();
+            SquadBlackboard bb = ctx.Blackboard;
+            int id = ctx.Self.GetInstanceID();
 
-            // 검색을 충분히 했다면
-            if (_searchTimer >= SearchDuration)
+            // 새 사건으로 지도가 바뀌었으면 예전 지도의 지점은 버린다.
+            if (_point != null && _pointSpot != bb.SearchPlanSpot)
+                ResetPoint();
+
+            if (_point == null)
             {
-                // 검색에 든 시간 초기화
-                _searchTimer = 0f;
-                // 조사 완료 목록 추가
-                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SignalSource);
-                // 같은 제보를 다시 조사하지 않도록 제보 제거
-                ctx.Blackboard.ClearSignal();
-                // 완료 처리
-                return true;
+                _point = bb.ClaimSearchPoint(id, ctx.Self.position);
+                _pointSpot = bb.SearchPlanSpot;
+                if (_point == null)
+                {
+                    // 남은 지점이 없다: 수색 끝
+                    ctx.Joined = false;
+                    bb.ReleaseSearchPoints(id);
+                    return true;
+                }
+            }
+
+            bb.MarkSearchPointsSeen(ctx.Self.position, PassBySeeRadius, id);
+
+            if (!_lookingAround)
+            {
+                bool arrived = ctx.Locomotion.MoveTo(_point.Position, PointArriveRadius, ctx.Alert.Level);
+                if (!ctx.Locomotion.HasValidPath)
+                {
+                    // 갈 수 없는 지점은 확인한 것으로 치고 다음으로
+                    bb.CompleteSearchPoint(_point);
+                    ResetPoint();
+                    return false;
+                }
+                if (arrived)
+                {
+                    _lookingAround = true;
+                    _lookTimer = 0f;
+                }
+                return false;
+            }
+
+            ctx.Locomotion.LookAround();
+            _lookTimer += Time.deltaTime;
+            if (_lookTimer >= LookDuration)
+            {
+                bb.CompleteSearchPoint(_point);
+                ResetPoint();
             }
             return false;
+        }
+
+        private void ResetPoint()
+        {
+            _point = null;
+            _lookingAround = false;
+            _lookTimer = 0f;
         }
     }
 

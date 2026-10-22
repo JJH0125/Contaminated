@@ -24,31 +24,16 @@ namespace Squad
     [RequireComponent(typeof(PostProcessLayer))]
     public class FakeDimensionEffect : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("효과가 나타나고 사라지는 데 걸리는 시간(초)")]
-        [SerializeField] private float fadeTime = 0.6f;
-        [Tooltip("노이즈의 세기")]
-        [Range(0f, 1f)]
-        [SerializeField] private float grainIntensity = 0.6f;
-        [Tooltip("노이즈 알갱이의 크기")]
-        [Range(0.3f, 3f)]
-        [SerializeField] private float grainSize = 1.4f;
-        [Tooltip("화면이 휘는 정도. 클수록 크게 일렁인다")]
-        [Range(0f, 60f)]
-        [SerializeField] private float wobbleAmount = 18f;
-        [Tooltip("일렁이는 빠르기")]
-        [SerializeField] private float wobbleSpeed = 1.5f;
-        [Tooltip("가장자리에서 색이 번지는 정도")]
-        [Range(0f, 1f)]
-        [SerializeField] private float colorFringe = 0.5f;
-        [Tooltip("가장자리가 어두워지는 정도")]
-        [Range(0f, 1f)]
-        [SerializeField] private float vignette = 0.4f;
-        [Tooltip("색이 빠지는 정도. -100이면 흑백, 0이면 그대로")]
-        [Range(-100f, 0f)]
-        [SerializeField] private float saturation = -45f;
-        [Tooltip("화면 전체에 입힐 색조")]
-        [SerializeField] private Color tint = new Color(0.75f, 0.85f, 1f);
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float fadeTime => GameTuning.Instance.fakeScreen.fadeTime;
+        private float grainIntensity => GameTuning.Instance.fakeScreen.grainIntensity;
+        private float grainSize => GameTuning.Instance.fakeScreen.grainSize;
+        private float wobbleAmount => GameTuning.Instance.fakeScreen.wobbleAmount;
+        private float wobbleSpeed => GameTuning.Instance.fakeScreen.wobbleSpeed;
+        private float colorFringe => GameTuning.Instance.fakeScreen.colorFringe;
+        private float vignette => GameTuning.Instance.fakeScreen.vignette;
+        private float saturation => GameTuning.Instance.fakeScreen.saturation;
+        private Color tint => GameTuning.Instance.fakeScreen.tint;
 
         // PostProcessLayer에 Volume 레이어가 지정되어 있지 않을 때 대신 쓸 레이어 (Unity 기본 레이어인 TransparentFX)
         private const int FallbackVolumeLayer = 1;

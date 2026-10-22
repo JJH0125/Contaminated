@@ -18,29 +18,34 @@ namespace Squad
     [RequireComponent(typeof(Rigidbody))]
     public class ChaserLocomotion : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("Calm 상태일 때 이동 속도")]
-        [SerializeField] private float calmMoveSpeed = 5f;
-        [Tooltip("Suspicious 상태일 때 이동 속도")]
-        [SerializeField] private float suspiciousMoveSpeed = 9f;
-        [Tooltip("Alerted 상태일 때 이동 속도")]
-        [SerializeField] private float alertedMoveSpeed = 13f;
+        // 수치는 GameTuning 에셋의 적 항목(Real 적 / Fake 적)에서 이 적의 차원에 맞는 것을 읽는다.
+        private DimensionMember _member;
+        private EnemyTuning Tuning
+        {
+            get
+            {
+                if (_member == null)
+                    _member = GetComponent<DimensionMember>();
+                return GameTuning.Instance.EnemyFor(_member);
+            }
+        }
+        private float calmMoveSpeed => Tuning.calmMoveSpeed;
+        private float suspiciousMoveSpeed => Tuning.suspiciousMoveSpeed;
+        private float alertedMoveSpeed => Tuning.alertedMoveSpeed;
         [Tooltip("적이 고개를 돌리는 속도")]
 
-        [SerializeField] private float turnSpeed = 8f;
+        private float turnSpeed => Tuning.turnSpeed;
         [Tooltip("waypoint에 접근하여 다음 waypoint로 이동을 시작하는 거리")]
 
-        [SerializeField] private float waypointTolerance = 0.25f;
+        private float waypointTolerance => Tuning.waypointTolerance;
         [Tooltip("플레이어가 유의미하게 움직였다 의 기준")]
 
-        [SerializeField] private float repathThreshold = 3f;
+        private float repathThreshold => Tuning.repathThreshold;
         [Tooltip("한 번의 Wander을 통해 이동하는 최대 거리")]
 
-        [SerializeField] private float wanderRadius = 30f;
-        [Tooltip("지형(Terrain) 위에서 이 오브젝트의 위치가 땅보다 얼마나 위에 있을지(m). 모델의 발이 땅에 닿도록 맞춘다")]
-        [SerializeField] private float heightAboveGround = 1f;
-        [Tooltip("몸이 땅을 딛는 범위의 반경(m). 비탈에서 이 범위 안의 가장 높은 땅에 맞춰 서므로 발이 땅에 묻히지 않는다. 0이면 한가운데의 높이만 본다")]
-        [SerializeField] private float footprintRadius = 2.5f;
+        private float wanderRadius => Tuning.wanderRadius;
+        private float heightAboveGround => Tuning.heightAboveGround;
+        private float footprintRadius => Tuning.footprintRadius;
 
         private Rigidbody _rigidbody;
         // 씬에 지형(Terrain)이 있으면 그 높이를 따라 움직인다. 없으면 평평한 맵으로 보고 높이를 유지한다.
@@ -136,6 +141,11 @@ namespace Squad
             FollowPath(MoveSpeedFor(alert));
             return false;
         }
+
+        /// <summary>
+        /// 그 자리에 설 수 있는가(길찾기 격자에서 막히지 않은 칸인가). 격자가 없으면 true.
+        /// </summary>
+        public bool IsWalkable(Vector3 position) => _pathfinder == null || _pathfinder.IsWalkable(position);
 
         private float MoveSpeedFor(AlertLevel alert) => alert switch
         {

@@ -17,20 +17,12 @@ namespace Squad
     /// </summary>
     public class BoundaryShimmer : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("벽의 색")]
-        [SerializeField] private Color color = new Color(0.25f, 0.55f, 1f);
-        [Tooltip("빛나는 정도")]
-        [Range(0f, 2f)]
-        [SerializeField] private float glow = 0.6f;
-        [Tooltip("벽 너머가 일렁이는 정도")]
-        [Range(0f, 0.05f)]
-        [SerializeField] private float distortion = 0.015f;
-        [Tooltip("플레이어가 이 거리(m) 안으로 다가가면 벽이 가장 또렷해진다")]
-        [SerializeField] private float nearDistance = 30f;
-        [Tooltip("멀리 있는 벽이 보이는 정도 (0: 안 보임, 1: 가까이 있을 때만큼 또렷함)")]
-        [Range(0f, 1f)]
-        [SerializeField] private float farStrength = 0.15f;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private Color color => GameTuning.Instance.boundary.color;
+        private float glow => GameTuning.Instance.boundary.glow;
+        private float distortion => GameTuning.Instance.boundary.distortion;
+        private float nearDistance => GameTuning.Instance.boundary.nearDistance;
+        private float farStrength => GameTuning.Instance.boundary.farStrength;
 
         // 지형 바닥에서 잰 벽의 높이(m). 거대한 적(약 14m)보다 넉넉히 높게 한다.
         private const float WallHeight = 30f;

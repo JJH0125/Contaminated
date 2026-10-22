@@ -23,16 +23,11 @@ namespace Squad
     {
         public static SfxPlayer Instance { get; private set; }
 
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("효과음 볼륨")]
-        [Range(0f, 1f)]
-        [SerializeField] private float volume = 0.5f;
-        [Tooltip("이 거리(m)까지는 최대 크기로 들린다")]
-        [SerializeField] private float minDistance = 10f;
-        [Tooltip("이 거리(m)부터는 들리지 않는다")]
-        [SerializeField] private float maxDistance = 40f;
-        [Tooltip("동시에 재생할 수 있는 3D 효과음의 최대 개수")]
-        [SerializeField] private int poolSize = 8;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float volume => GameTuning.Instance.audio.sfxVolume;
+        private float minDistance => GameTuning.Instance.audio.minDistance;
+        private float maxDistance => GameTuning.Instance.audio.maxDistance;
+        private int poolSize => GameTuning.Instance.audio.poolSize;
 
         /// <summary>효과음 볼륨. 따로 소리를 내는 스크립트(CctvNoiseEffect 등)도 이 값에 맞춘다.</summary>
         public float Volume => volume;

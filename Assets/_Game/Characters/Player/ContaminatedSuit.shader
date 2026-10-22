@@ -32,6 +32,9 @@ Shader "Custom/Contaminated Suit"
         #pragma surface surf Standard fullforwardshadows
         #pragma target 3.0
 
+        // 오염이 번지는 계산은 Fake 차원의 오염 흔적과 함께 쓴다.
+        #include "Assets/_Game/Resources/Shaders/Contamination.cginc"
+
         sampler2D _MainTex;
         sampler2D _DirtyTex;
         sampler2D _BumpMap;
@@ -53,12 +56,8 @@ Shader "Custom/Contaminated Suit"
             // 두 색이 얼마나 다른가 (0: 같음, 1: 아주 다름)
             half difference = saturate(length(dirty - clean) * 1.5);
 
-            // 오염 정도가 오를수록 기준선이 내려가서, 덜 다른 곳까지 오염된 색으로 바뀐다.
-            // 오염 정도가 0이면 기준선이 1보다 위에 있어 아무 곳도 바뀌지 않는다.
-            half threshold = 1 - _Contamination * (1 + _Spread * 2) + _Spread;
-            half mask = smoothstep(threshold - _Spread, threshold + _Spread, difference);
-            // 끝에서는 다르지 않던 곳까지 모두 오염된 색이 되도록 한다.
-            mask = max(mask, saturate((_Contamination - 0.9) * 10));
+            // 오염 정도가 오를수록 덜 다른 곳까지 오염된 색으로 바뀐다.
+            half mask = ContaminationMask(difference, _Contamination, _Spread);
 
             o.Albedo = lerp(clean, dirty, mask) * _Color.rgb;
             // 노멀맵은 오염된 보호복의 것이라 얼룩과 바이저 무늬의 굴곡이 들어 있다.

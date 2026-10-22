@@ -15,13 +15,10 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class Player : MonoBehaviour
 {
-    [Header("○ 튜닝 값 — 자유롭게 조절")]
-    [Tooltip("달리는 속도 (Shift를 누르고 있을 때)")]
-    [SerializeField] private float moveSpeed = 15f;
-    [Tooltip("걷는 속도 (기본)")]
-    [SerializeField] private float walkSpeed = 7.5f;
-    [Tooltip("중력 가속도(음수)")]
-    [SerializeField] private float gravity = -20f;
+    // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+    private float moveSpeed => Squad.GameTuning.Instance.player.moveSpeed;
+    private float walkSpeed => Squad.GameTuning.Instance.player.walkSpeed;
+    private float gravity => Squad.GameTuning.Instance.player.gravity;
 
     private Vector3 cameraForward;
     private Vector3 cameraRight;
@@ -39,6 +36,9 @@ public class Player : MonoBehaviour
 
     /// <summary>지금 달리고 있는가 (움직이는 중이고 걷기가 아님). 횃불 게이지가 더 빨리 닳는 데 쓴다.</summary>
     public bool IsRunning => !isWalk && horizontal != Vector3.zero;
+
+    /// <summary>지금 평면 위에서 움직이는 속도(m/s, 방향 포함). 적이 플레이어의 이동 방향을 기억할 때 쓴다.</summary>
+    public Vector3 HorizontalVelocity => horizontal;
 
     /// <summary>
     /// true인 동안 이동과 회전을 멈춘다. 돌을 줍는 동작처럼 제자리에서 해야 하는 동작이 켜고 끈다(StoneHolder).

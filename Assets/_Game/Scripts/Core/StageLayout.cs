@@ -45,52 +45,32 @@ namespace Squad
     [DefaultExecutionOrder(-100)]
     public class StageLayout : MonoBehaviour
     {
-        [Header("○ 지형 — Forest Map Tool에 넣은 값과 같게")]
-        [Tooltip("봉우리의 반경(m). 적은 플레이어에게서 이 값의 2배(지름) 이상 떨어져 생성된다")]
-        [SerializeField] private float hillRadius = 40f;
+        // 지형 — Forest Map Tool에 넣은 값과 같게
+        private float hillRadius => GameTuning.Instance.stage.hillRadius;
 
-        [Header("○ 높이 — 오브젝트의 기준점(pivot)이 땅보다 얼마나 위에 있을지(m)")]
-        [Tooltip("출구")]
-        [SerializeField] private float exitHeight = 13.63f;
-        [Tooltip("플레이어. 기준점이 몸 한가운데(발에서 1m 위)이므로 1보다 조금 크게 둔다. 값이 크면 그만큼 공중에서 떨어지며 시작한다")]
-        [SerializeField] private float playerHeight = 1.2f;
-        [Tooltip("발전기")]
-        [SerializeField] private float generatorHeight = 4.11f;
+        // 높이 — 오브젝트의 기준점(pivot)이 땅보다 얼마나 위에 있을지(m)
+        private float exitHeight => GameTuning.Instance.stage.exitHeight;
+        private float playerHeight => GameTuning.Instance.stage.playerHeight;
+        private Vector2 exitPosition => GameTuning.Instance.stage.exitPosition;
+        private float playerDistanceFromExit => GameTuning.Instance.stage.playerDistanceFromExit;
 
-        [Header("○ 고정 배치")]
-        [Tooltip("출구의 자리. 지형 한가운데를 (0, 0)으로 본 (x, z)")]
-        [SerializeField] private Vector2 exitPosition = new Vector2(0f, -84f);
-        [Tooltip("플레이어가 출구에서 지형 한가운데 쪽으로 얼마나 나와서 시작할지(m)")]
-        [SerializeField] private float playerDistanceFromExit = 25f;
+        // 무작위 배치
+        private float edgeMargin => GameTuning.Instance.stage.edgeMargin;
+        private float maxSlope => GameTuning.Instance.stage.maxSlope;
+        private int enemiesPerDimension => GameTuning.Instance.stage.enemiesPerDimension;
+        private float objectSpacing => GameTuning.Instance.stage.objectSpacing;
 
-        [Header("○ 무작위 배치")]
-        [Tooltip("지형 가장자리에서 이만큼(m)은 비워 둔다")]
-        [SerializeField] private float edgeMargin = 10f;
-        [Tooltip("땅의 기울기가 이 각도(도)보다 가파른 곳에는 놓지 않는다")]
-        [SerializeField] private float maxSlope = 25f;
-        [Tooltip("라운드마다 차원별로 놓을 적의 수. Stage 프리팹에는 차원마다 적을 하나씩만 넣어 두면 되고, " +
-                 "모자란 만큼 같은 차원의 적을 복제한다 (3이면 Real 3마리, Fake 3마리)")]
-        [SerializeField] private int enemiesPerDimension = 3;
-        [Tooltip("적과 모닥불이 먼저 놓인 오브젝트에서 적어도 이만큼(m)은 떨어지게 한다")]
-        [SerializeField] private float objectSpacing = 10f;
-
-        [Header("○ 모닥불")]
-        [Tooltip("라운드마다 놓을 모닥불의 개수. Stage 프리팹에는 모닥불을 하나만 넣어 두면 되고, 모자란 만큼 복제한다")]
-        [SerializeField] private int campfireCount = 6;
-        [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다")]
-        [SerializeField] private float campfireSpacing = 40f;
-        [Tooltip("모닥불에서 이 거리(m) 안에 있는 나무와 풀을 치워서 모닥불이 잘 보이게 한다. 0이면 치우지 않는다")]
-        [SerializeField] private float campfireClearRadius = 12f;
+        // 모닥불
+        private int campfireCount => GameTuning.Instance.stage.campfireCount;
+        private float campfireSpacing => GameTuning.Instance.stage.campfireSpacing;
+        private float campfireClearRadius => GameTuning.Instance.stage.campfireClearRadius;
 
         [Header("○ 돌 (미끼)")]
         [Tooltip("돌로 쓸 모델(프리팹). 여러 개를 넣으면 놓을 때마다 그중 하나를 고른다. 비워 두면 돌을 놓지 않는다")]
         [SerializeField] private GameObject[] stoneModels;
-        [Tooltip("라운드마다 맵 곳곳에 놓을 돌의 개수")]
-        [SerializeField] private int stoneCount = 20;
-        [Tooltip("돌의 크기(m). 모델의 가장 긴 변이 이 길이가 되도록 맞춘다")]
-        [SerializeField] private float stoneSize = 1f;
-        [Tooltip("돌끼리 적어도 이만큼(m)은 떨어지게 한다")]
-        [SerializeField] private float stoneSpacing = 12f;
+        private int stoneCount => GameTuning.Instance.stone.count;
+        private float stoneSize => GameTuning.Instance.stone.size;
+        private float stoneSpacing => GameTuning.Instance.stone.spacing;
 
         // 조건에 맞는 자리가 나올 때까지 다시 뽑는 최대 횟수
         private const int MaxTries = 300;

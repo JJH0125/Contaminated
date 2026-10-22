@@ -22,13 +22,9 @@ namespace Squad
         [Tooltip("Contaminated Suit 셰이더를 쓰는 재질")]
         [SerializeField] private Material suitMaterial;
 
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("첫 라운드의 오염 정도 (0: 깨끗함, 1: 완전히 오염)")]
-        [Range(0f, 1f)]
-        [SerializeField] private float firstRoundContamination = 0f;
-        [Tooltip("마지막 라운드의 오염 정도")]
-        [Range(0f, 1f)]
-        [SerializeField] private float lastRoundContamination = 0.85f;
+        // 오염 정도는 GameTuning 에셋의 suit 항목에서 읽는다.
+        private float firstRoundContamination => GameTuning.Instance.suit.firstRoundContamination;
+        private float lastRoundContamination => GameTuning.Instance.suit.lastRoundContamination;
 
         private static readonly int ContaminationId = Shader.PropertyToID("_Contamination");
 

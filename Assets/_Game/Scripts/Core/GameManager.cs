@@ -49,11 +49,10 @@ namespace Squad
         [SerializeField] private GameObject gameOverUI;
         [Tooltip("라운드 클리어 화면")]
         [SerializeField] private GameObject resultUI;
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("출구를 처음부터 열어 둘지. 발전기를 없앤 뒤 새 탈출 조건을 정하기 전까지는 켜 둔다")]
-        [SerializeField] private bool openExitAtStart = true;
-        [Tooltip("전체 라운드 수")]
-        [SerializeField] private int totalRounds = 5;
+
+        // 라운드 수와 출구는 GameTuning 에셋의 stage 항목에서 읽는다.
+        private bool openExitAtStart => GameTuning.Instance.stage.openExitAtStart;
+        private int totalRounds => GameTuning.Instance.stage.totalRounds;
 
         /// 현재 존재하는 스테이지 오브젝트. 게임 시작 시 생성되고, 라운드 종료 시 제거된다.
         private GameObject currentStage;

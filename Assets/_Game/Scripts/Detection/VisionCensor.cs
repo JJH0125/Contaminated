@@ -15,44 +15,43 @@ namespace Squad
         [Header("■ 필수 연결 — 비워두면 에러")]
         [Tooltip("플레이어")]
         [SerializeField] private Transform player;
-
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("적이 볼 수 있는 최대 거리")]
-        [SerializeField] private float viewDistance = 22f;
-        [Tooltip("적의 시야각")]
-        [SerializeField] private float viewAngle = 120f;
-        [Tooltip("적의 눈높이(m). 적 오브젝트 위치 기준이다. 모델의 얼굴 높이(Jumpscare의 Face Height)와 맞춘다")]
-        [SerializeField] private float eyeHeight = 11.6f;
         [Tooltip("감지할 대상 레이어")]
         [SerializeField] private LayerMask targetLayer;
         [Tooltip("장애물로 인식할 대상 레이어")]
         [SerializeField] private LayerMask obstacleLayer;
-        [Tooltip("시선을 겨냥할 플레이어 몸의 높이(m). 플레이어 오브젝트 위치(몸 한가운데, 발에서 1m 위) 기준이다. " +
-                 "모델의 가슴 높이에 맞춘다")]
-        [SerializeField] private float playerHeight = 3.5f;
-        [Tooltip("Detection을 수행할 주기")]
-        [SerializeField] private float detectInterval = 0.2f;
 
-        [Header("○ 불빛 — 불(모닥불, 횃불) 근처의 플레이어는 더 멀리서도 보인다")]
-        [Tooltip("첫 라운드에서, 불빛 안의 플레이어를 볼 수 있는 거리의 배율. 1이면 평소와 같다")]
-        [SerializeField] private float litViewMultiplierFirstRound = 1f;
-        [Tooltip("마지막 라운드에서의 배율. 라운드가 오를수록 첫 라운드 값에서 이 값으로 고르게 커진다")]
-        [SerializeField] private float litViewMultiplierLastRound = 2.5f;
+        // 수치는 GameTuning 에셋의 적 항목(Real 적 / Fake 적)에서 이 적의 차원에 맞는 것을 읽는다.
+        private EnemyTuning Tuning => GameTuning.Instance.EnemyFor(enemy);
+        private float viewDistance => Tuning.viewDistance;
+        private float viewAngle => Tuning.viewAngle;
+        private float eyeHeight => Tuning.eyeHeight;
+        private float playerHeight => Tuning.playerHeight;
+        private float detectInterval => Tuning.detectInterval;
+
+        // 불빛 — 불(모닥불, 횃불) 근처의 플레이어는 더 멀리서도 보인다
+        private float litViewMultiplierFirstRound => Tuning.litViewMultiplierFirstRound;
+        private float litViewMultiplierLastRound => Tuning.litViewMultiplierLastRound;
 
         [Header("○ 발견 소리 — 플레이어를 못 보다가 막 발견한 순간에 낸다")]
         [Tooltip("발견했을 때 재생할 소리. 거리와 상관없이 항상 같은 크기로 들린다. 비워두면 소리를 내지 않는다")]
         [SerializeField] private AudioClip spottedSound;
-        [Tooltip("발견 소리가 한 번 난 뒤, 다시 날 수 있을 때까지의 시간(초). 모든 적이 함께 쓴다")]
-        [SerializeField] private float spottedSoundCooldown = 3f;
+        private float spottedSoundCooldown => Tuning.spottedSoundCooldown;
 
         private float _detectTimer;
         private DimensionController dimensionController;
         private DimensionMember enemy;
 
+        // 플레이어의 이동 담당(이동 속도를 읽는다)과, 이 적의 두뇌(포효를 시킨다)
+        private Player _playerMover;
+        private HorrorChaserAgent _agent;
+
         void Start()
         {
             dimensionController = DimensionController.Instance;
             enemy = GetComponent<DimensionMember>();
+            _agent = GetComponent<HorrorChaserAgent>();
+            if (player != null)
+                _playerMover = player.GetComponent<Player>();
         }
 
         void Update()
@@ -180,8 +179,13 @@ namespace Squad
             if (canSee)
                 // 플레이어가 시야에 있으면, 매번 호출하여 그 위치를 업데이트하고 경계 상태를 Alerted로 격상
                 {
-                SquadBlackboard.Instance.ReportSighting(enemy, target.position);
+                Vector3 velocity = _playerMover != null ? _playerMover.HorizontalVelocity : Vector3.zero;
+                bool newSpot = SquadBlackboard.Instance.ReportSighting(enemy, target.position, velocity);
                 gameObject.GetComponent<ChaserAlert>().RaiseAlert(AlertLevel.Alerted);
+
+                // 아무도 보지 않던 플레이어를 이 적이 새로 봤다면, 주변의 같은 차원 적에게 발견 신호(포효)를 보낸다.
+                if (newSpot && _agent != null)
+                    _agent.Roar();
                 }
             else
 

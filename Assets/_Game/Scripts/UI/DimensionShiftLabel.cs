@@ -7,6 +7,7 @@ namespace Squad
     /// 차원 이동을 지금 쓸 수 있는지 화면에 알려 준다.
     ///   쓸 수 있을 때     "[F] 차원 이동"
     ///   대기 중일 때      "차원 이동 7초" (남은 시간, 흐린 색)
+    ///   Fake에 있을 때    "Real로 돌아가기까지 5초" (튕겨 나오기까지 남은 시간)
     ///
     /// 값은 DimensionController에서 매 프레임 읽어 온다.
     /// 컨트롤러는 Stage와 함께 라운드마다 새로 만들어지지만 이 안내는 Canvas에 계속 남아 있으므로,
@@ -25,6 +26,10 @@ namespace Squad
         [SerializeField] private string readyFormat = "[{0}] 차원 이동";
         [Tooltip("대기 중일 때의 문구. {0}=남은 시간(초)")]
         [SerializeField] private string cooldownFormat = "차원 이동 {0:0}초";
+        [Tooltip("Fake에 있을 때의 문구. {0}=Real로 튕겨 나오기까지 남은 시간(초)")]
+        [SerializeField] private string fakeStayFormat = "Real로 돌아가기까지 {0:0}초";
+        [Tooltip("Fake에 있을 때의 글자 색")]
+        [SerializeField] private Color fakeStayColor = new Color(0.75f, 0.85f, 1f);
         [Tooltip("이동할 수 있을 때의 글자 색")]
         [SerializeField] private Color readyColor = Color.white;
         [Tooltip("대기 중일 때의 글자 색")]
@@ -86,6 +91,15 @@ namespace Squad
             if (controller == null)
             {
                 _label.text = "";
+                return;
+            }
+
+            // Fake에 있으면 언제 튕겨 나올지를 먼저 보여 준다.
+            float fakeRemaining = controller.FakeTimeRemaining;
+            if (fakeRemaining > 0f)
+            {
+                _label.text = string.Format(fakeStayFormat, Mathf.Ceil(fakeRemaining));
+                _label.color = fakeStayColor;
                 return;
             }
 

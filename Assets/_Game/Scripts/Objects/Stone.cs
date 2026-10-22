@@ -23,22 +23,15 @@ namespace Squad
     /// </summary>
     public class Stone : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("던져진 돌에 작용하는 중력 가속도(음수)")]
-        [SerializeField] private float gravity = -80f;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float gravity => GameTuning.Instance.stone.gravity;
         [Tooltip("돌이 부딪히는 대상의 레이어. 땅(지형)이 속한 레이어가 반드시 들어 있어야 한다")]
         [SerializeField] private LayerMask landMask = (1 << 0) | (1 << 10);   // Default + Floor (땅, 맵 가장자리의 벽)
-        [Tooltip("튕기는 정도. 0이면 튕기지 않는다")]
-        [Range(0f, 1f)]
-        [SerializeField] private float bounciness = 0.35f;
-        [Tooltip("땅에서 튕길 수 있는 최대 횟수")]
-        [SerializeField] private int maxBounces = 2;
-        [Tooltip("날아가는 동안 도는 빠르기(도/초)")]
-        [SerializeField] private float spinSpeed = 720f;
-        [Tooltip("어둠 속에서도 돌이 보이도록 두르는 테두리의 색")]
-        [SerializeField] private Color outlineColor = Color.white;
-        [Tooltip("테두리의 굵기(화면 픽셀). 멀리 있어도 같은 굵기로 보인다. 0이면 테두리를 그리지 않는다")]
-        [SerializeField] private float outlineWidth = 3f;
+        private float bounciness => GameTuning.Instance.stone.bounciness;
+        private int maxBounces => GameTuning.Instance.stone.maxBounces;
+        private float spinSpeed => GameTuning.Instance.stone.spinSpeed;
+        private Color outlineColor => GameTuning.Instance.stone.outlineColor;
+        private float outlineWidth => GameTuning.Instance.stone.outlineWidth;
 
         private const string OutlineShaderName = "Hidden/Custom/StoneOutline";
         private static readonly int OutlineColorId = Shader.PropertyToID("_OutlineColor");

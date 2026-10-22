@@ -37,9 +37,19 @@ namespace Squad
         // 한 WanderStep 완료 후 다음 WanderStep 시작 전 대기하는 최소/최대 시간(이 범위에서 매번 랜덤 선택).
         public float WanderPauseMin;
         public float WanderPauseMax;
-        // 다른 적이 플레이어를 발견했다는 신호를 받았는가
-        public bool HasSignal;
-        // 그 신호가 가리키는 위치
-        public Vector3 SignalPosition;
+        // 신호를 받고 합류했는지
+        public bool Joined;
+        // 대응 중인 사건 번호
+        public int ProcessingSpotCount;
+
+        // 추격 겹침: 앞질러 가는 적이 몇 초 뒤의 플레이어 위치를 노리는가
+        public float InterceptLeadTime;
+        // 앞질러 가는 적끼리 좌우로 벌리는 간격(m)
+        public float InterceptSpacing;
+        // 플레이어가 이 거리(m) 안이면 역할과 상관없이 곧장 달려든다
+        public float InterceptDirectRadius;
+        // 지금 맡은 추격 역할(0 = 곧장 쫓음, 1 이상 = 앞질러 감, -1 = 추격 안 함)과 목적지. 시각화용
+        public int ChaseRank = -1;
+        public Vector3 ChaseTarget;
     }
 }

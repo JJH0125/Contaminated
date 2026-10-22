@@ -24,21 +24,13 @@ namespace Squad
     [RequireComponent(typeof(PostProcessLayer))]
     public class CctvNoiseEffect : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("이 거리(m)보다 멀면 노이즈가 없다")]
-        [SerializeField] private float farDistance = 50f;
-        [Tooltip("이 거리(m) 안으로 들어오면 노이즈가 가장 세다")]
-        [SerializeField] private float nearDistance = 8f;
-        [Tooltip("가장 셀 때의 노이즈 세기 (0~1)")]
-        [Range(0f, 1f)]
-        [SerializeField] private float maxIntensity = 0.8f;
-        [Tooltip("세기가 출렁이는 빠르기")]
-        [SerializeField] private float flickerSpeed = 6f;
-        [Tooltip("1초에 몇 번꼴로 노이즈가 확 튀는가 (적이 가장 가까울 때 기준)")]
-        [SerializeField] private float spikesPerSecond = 1.5f;
-        [Tooltip("지지직 소리의 크기. 효과음 볼륨(SfxPlayer)에 곱해진다. 0이면 소리를 내지 않는다")]
-        [Range(0f, 1f)]
-        [SerializeField] private float soundVolume = 0.6f;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float farDistance => GameTuning.Instance.cctv.farDistance;
+        private float nearDistance => GameTuning.Instance.cctv.nearDistance;
+        private float maxIntensity => GameTuning.Instance.cctv.maxIntensity;
+        private float flickerSpeed => GameTuning.Instance.cctv.flickerSpeed;
+        private float spikesPerSecond => GameTuning.Instance.cctv.spikesPerSecond;
+        private float soundVolume => GameTuning.Instance.cctv.soundVolume;
 
         // PostProcessLayer에 Volume 레이어가 지정되어 있지 않을 때 대신 쓸 레이어 (Unity 기본 레이어인 TransparentFX)
         private const int FallbackVolumeLayer = 1;

@@ -31,10 +31,8 @@ namespace Squad
         [SerializeField] private string movingParameter = "isRun";
         [Tooltip("천천히 걷는 중인지 나타내는 파라미터 이름")]
         [SerializeField] private string walkParameter = "isWalk";
-        [Tooltip("걷는 중 발소리 간격(초). 느리게 걸으니 더 길게")]
-        [SerializeField] private float walkInterval = 0.5f;
-        [Tooltip("뛰는 중 발소리 간격(초). 더 짧게 = 더 자주")]
-        [SerializeField] private float runInterval = 0.3f;
+        private float walkInterval => GameTuning.Instance.player.walkStepInterval;
+        private float runInterval => GameTuning.Instance.player.runStepInterval;
 
         // 파라미터 이름을 매번 문자열로 넘기지 않도록 해시를 미리 구해 둔다.
         private int _movingHash;

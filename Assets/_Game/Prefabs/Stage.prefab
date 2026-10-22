@@ -111,6 +111,8 @@ MonoBehaviour:
   replanInterval: 0.4
   wanderPauseMin: 1.5
   wanderPauseMax: 4
+  roarRadius: 200
+  joinTimeout: 30
 --- !u!114 &8451473549521760
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -451,11 +453,15 @@ MonoBehaviour:
   useKey: 101
   pickupRadius: 4
   pickupMessage: "[E] \uB3CC \uC90D\uAE30"
+  pickupAnimationSpeed: 3.5
+  grabTime: 1.97
+  pickupFinishAt: 0.8
   handBoneName: mixamorig:LeftHand
   handOffset: {x: 0, y: 0.08, z: 0.05}
   throwSpeed: 40
   throwUpSpeed: 20
   throwAnimationSpeed: 1.5
+  throwStartTime: 0.65
   releaseTime: 0.8
   enemyLayer:
     serializedVersion: 2
@@ -668,6 +674,8 @@ MonoBehaviour:
   replanInterval: 0.4
   wanderPauseMin: 1.5
   wanderPauseMax: 4
+  roarRadius: 40
+  joinTimeout: 30
 --- !u!114 &8451474669438653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1010,6 +1018,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 421d2a3b0aa31954896528b4f67f69ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  searchPointCount: 6
+  searchRings:
+  - 8
+  - 16
+  - 24
+  searchPointSpacing: 7
+  searchCoverMask:
+    serializedVersion: 2
+    m_Bits: 1032
+  searchClaimTimeout: 20
 --- !u!1 &8451475334530058
 GameObject:
   m_ObjectHideFlags: 0
@@ -1055,7 +1073,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shiftKey: 102
-  cooldown: 12
+  cooldown: 15
+  fakeStayTime: 8
   undetectableTime: 1
   enemyLayer:
     serializedVersion: 2

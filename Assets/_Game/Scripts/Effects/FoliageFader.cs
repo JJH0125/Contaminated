@@ -28,15 +28,11 @@ namespace Squad
     /// </summary>
     public class FoliageFader : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [Tooltip("플레이어 주변에 뚫는 창의 반지름(m). 플레이어 몸 한가운데를 중심으로 잰다")]
-        [SerializeField] private float cutoutRadius = 5f;
-        [Tooltip("창의 가장자리를 부드럽게 흩뜨리는 폭(m). 0이면 칼로 자른 듯한 경계가 된다")]
-        [SerializeField] private float edgeWidth = 0.6f;
-        [Tooltip("창이 열리거나 닫히는 데 걸리는 시간(초)")]
-        [SerializeField] private float fadeTime = 0.25f;
-        [Tooltip("시선의 굵기(m). 클수록 시선 가까이에 있는 것까지 함께 창의 대상이 된다")]
-        [SerializeField] private float sightRadius = 1f;
+        // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
+        private float cutoutRadius => GameTuning.Instance.foliage.cutoutRadius;
+        private float edgeWidth => GameTuning.Instance.foliage.edgeWidth;
+        private float fadeTime => GameTuning.Instance.foliage.fadeTime;
+        private float sightRadius => GameTuning.Instance.foliage.sightRadius;
 
         // 대상 나무와 풀을 모아 둔 오브젝트의 이름 (안쪽 숲, 경계 바깥의 보기만 하는 숲)
         private static readonly string[] ForestRootNames = { "Forest Props", "Border Forest" };

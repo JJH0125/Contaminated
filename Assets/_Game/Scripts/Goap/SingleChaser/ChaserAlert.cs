@@ -10,13 +10,19 @@ namespace Squad
     /// </summary>
     public class ChaserAlert : MonoBehaviour
     {
-        [Header("○ 튜닝 값 — 자유롭게 조절")]
-        [SerializeField]
-        [Tooltip("적이 Alerted에서 Suspicious로 다운되기까지 걸리는 시간")]
-        private float AlertedToSuspiciousTime = 5f;
-        [SerializeField]
-        [Tooltip("적이 Suspicious에서 Calm으로 다운되기까지 걸리는 시간")]
-        private float SuspiciousToCalmTime = 8f;
+        // 내려가는 시간은 GameTuning 에셋의 적 항목(차원별)에서 읽는다.
+        private DimensionMember _member;
+        private EnemyTuning Tuning
+        {
+            get
+            {
+                if (_member == null)
+                    _member = GetComponent<DimensionMember>();
+                return GameTuning.Instance.EnemyFor(_member);
+            }
+        }
+        private float AlertedToSuspiciousTime => Tuning.alertedToSuspiciousTime;
+        private float SuspiciousToCalmTime => Tuning.suspiciousToCalmTime;
 
         // 현재 경계 상태 (기본값 : Calm)
         public AlertLevel Level { get; private set; } = AlertLevel.Calm;
