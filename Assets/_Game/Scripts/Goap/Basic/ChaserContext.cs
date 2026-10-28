@@ -37,6 +37,8 @@ namespace Squad
         // 한 WanderStep 완료 후 다음 WanderStep 시작 전 대기하는 최소/최대 시간(이 범위에서 매번 랜덤 선택).
         public float WanderPauseMin;
         public float WanderPauseMax;
+        // 함께 순찰하는 무리 (Real 적). 혼자 다니면 null
+        public ChaserPack Pack;
         // 신호를 받고 합류했는지
         public bool Joined;
         // 대응 중인 사건 번호

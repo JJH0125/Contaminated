@@ -18,8 +18,11 @@ namespace Squad
     /// 시작할 때 Volume을 코드로 하나 만들고, 물결의 자리와 퍼진 거리, 세기만 정해 준다.
     /// 수치는 GameTuning 에셋의 fakeContamination 항목에서 읽는다.
     ///
+    /// 라운드가 오르면(라운드별 구성의 realContamination) Real에도 물결 없이 옅은 얼룩이 늘 비친다.
+    /// Fake의 얼룩 정도도 라운드마다 짙어진다(fakeContamination).
+    ///
     /// 화면 처리로 그리므로 움직이는 캐릭터의 몸에도 얼룩이 묻어 미끄러져 보일 수 있다.
-    /// 그래서 플레이어와 Fake 적의 몸 둘레(원기둥)는 얼룩을 지운다.
+    /// 그래서 플레이어와, 플레이어가 있는 차원의 적의 몸 둘레(원기둥)는 얼룩을 지운다.
     ///
     /// 씬 구성:
     ///   붙일 필요가 없다. 씬이 열릴 때마다 Main Camera(PostProcessLayer가 있는 카메라)에 스스로 붙는다.
@@ -76,6 +79,9 @@ namespace Squad
             _effect.presence.Override(0f);
             _effect.origin.Override(Vector3.zero);
             _effect.radius.Override(0f);
+            _effect.amount.Override(0f);
+            _effect.baseAmount.Override(0f);
+            _effect.waveStrength.Override(0f);
 
             _volume = PostProcessManager.instance.QuickVolume(LowestLayerIn(layer.volumeLayer), 100.2f, _effect);
         }
@@ -85,6 +91,8 @@ namespace Squad
             FakeContaminationTuning tuning = GameTuning.Instance.fakeContamination;
             Player player = DimensionController.Instance != null ? DimensionController.Instance.player : null;
             bool inFake = player != null && player.myDimension == Dimension.Fake;
+            int round = GameManager.Instance != null ? GameManager.Instance.CurrentRound : 1;
+            RoundSetup setup = GameTuning.Instance.stage.Round(round);
 
             if (inFake)
             {
@@ -98,16 +106,22 @@ namespace Squad
 
                 // 일시정지 중에는 물결도 멈춘다.
                 _radius += tuning.spreadSpeed * Time.deltaTime;
-                _effect.presence.value = 1f;
+                _effect.waveStrength.value = 1f;
             }
             else
             {
-                // 돌아오면 얼룩이 걷힌다. (일시정지와 상관없이 자연스럽게 걷히도록 실제 시간을 쓴다)
+                // 돌아오면 물결의 얼룩이 걷힌다. (일시정지와 상관없이 자연스럽게 걷히도록 실제 시간을 쓴다)
                 float step = tuning.fadeOutTime > 0f ? Time.unscaledDeltaTime / tuning.fadeOutTime : 1f;
-                _effect.presence.value = Mathf.MoveTowards(_effect.presence.value, 0f, step);
+                _effect.waveStrength.value = Mathf.MoveTowards(_effect.waveStrength.value, 0f, step);
             }
 
+            // 라운드가 오를수록 Fake는 더 짙게, Real에도 얼룩이 비친다. (라운드 중이 아니면 Real은 깨끗하게 둔다)
+            _effect.amount.value = setup.fakeContamination;
+            _effect.baseAmount.value = player != null ? setup.realContamination : 0f;
             _effect.radius.value = _radius;
+            _effect.presence.value = _effect.waveStrength.value > 0f || _effect.baseAmount.value > 0f ? 1f : 0f;
+            if (inFake != _wasInFake)
+                _refreshTimer = 0f;
             _wasInFake = inFake;
 
             if (_effect.presence.value > 0f)
@@ -121,11 +135,13 @@ namespace Squad
             if (_refreshTimer <= 0f)
             {
                 _refreshTimer = RefreshInterval;
+                // 얼룩이 보이는 쪽은 플레이어가 있는 차원이므로, 그 차원의 적(화면에 보이는 적)만 모은다.
+                Dimension visible = player != null ? player.myDimension : Dimension.Fake;
                 _enemies.Clear();
                 foreach (ChaserLocomotion enemy in FindObjectsOfType<ChaserLocomotion>())
                 {
                     DimensionMember member = enemy.GetComponent<DimensionMember>();
-                    if (member != null && member.Dimension == Dimension.Fake)
+                    if (member != null && member.Dimension == visible)
                         _enemies.Add(enemy);
                 }
             }
@@ -147,7 +163,7 @@ namespace Squad
                     continue;
 
                 Vector3 p = enemy.transform.position;
-                float foot = p.y - GameTuning.Instance.fakeEnemy.heightAboveGround;
+                float foot = p.y - GameTuning.Instance.EnemyFor(enemy.GetComponent<DimensionMember>()).heightAboveGround;
                 ClearCylinders[count] = new Vector4(p.x, foot, p.z, tuning.enemyClearRadius);
                 ClearHeights[count] = tuning.enemyClearHeight;
                 count++;

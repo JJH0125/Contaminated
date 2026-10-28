@@ -42,8 +42,12 @@ Shader "Hidden/Custom/FakeContamination"
         float _FrontGlow;
         float _FrontFade;
 
-        // 얼룩
+        // 얼룩: 물결이 지나간 자리의 오염 정도(_Amount)와, 물결과 상관없이 어디에나 비치는 오염 정도(_BaseAmount)
+        // _WaveStrength는 Fake에 있을 때 1이고, Real로 돌아오면 0으로 줄어 물결의 얼룩과 앞머리가 걷힌다.
+        // 라운드가 오르면 Real에도 _BaseAmount만큼 얼룩이 비친다.
         float _Amount;
+        float _BaseAmount;
+        float _WaveStrength;
         float _Spread;
         float _StainSize;
         float4 _StainColor;
@@ -149,14 +153,14 @@ Shader "Hidden/Custom/FakeContamination"
             // 얼룩: 보호복과 같은 방식으로, 노이즈가 큰 곳부터 덮인다. 세로로 조금 늘여 흘러내린 자국처럼 보이게 한다.
             float3 p = world / max(_StainSize, 0.01) * float3(1.0, 0.6, 1.0);
             float difference = saturate((Fbm(p) - 0.3) * 2.0);
-            float mask = ContaminationMask(difference, _Amount * reveal, _Spread);
+            float mask = ContaminationMask(difference, max(_BaseAmount, _Amount * reveal * _WaveStrength), _Spread);
             // 얼룩의 가장자리 (덮인 곳과 아닌 곳의 경계)
             float rim = saturate(mask * (1.0 - mask) * 4.0);
             rim *= 0.75 + 0.25 * sin(_EffectTime * 2.0 + difference * 12.0);
 
             // 물결의 앞머리: 지금 퍼진 거리 근처의 띠. 멀리 퍼질수록 흐려진다.
             float frontOffset = (distance - _Radius) / max(_FrontWidth, 0.01);
-            float front = exp(-frontOffset * frontOffset) * saturate(1.0 - _Radius / max(_FrontFade, 0.01));
+            float front = exp(-frontOffset * frontOffset) * saturate(1.0 - _Radius / max(_FrontFade, 0.01)) * _WaveStrength;
 
             float strength = _Presence * FogFactor(length(ray * depth)) * (1.0 - clear);
 

@@ -28,6 +28,8 @@ namespace Squad
         [SerializeField] private string roundFormat = "라운드 {0} / {1}";
         [Tooltip("발전기 표시 형식. {0}=켜진 수, {1}=전체 수")]
         [SerializeField] private string generatorFormat = "발전기 {0} / {1}";
+        [Tooltip("모닥불 표시 형식. {0}=켜진 수, {1}=켜야 하는 수")]
+        [SerializeField] private string fireFormat = "모닥불 {0} / {1}";
         [Tooltip("발전기를 모두 켰을 때 표시할 문구")]
         [SerializeField] private string exitOpenMessage = "탈출하세요!";
 
@@ -45,6 +47,27 @@ namespace Squad
                 return;
 
             roundText.text = string.Format(roundFormat, current, total);
+        }
+
+        /// <summary>
+        /// 모닥불 표시를 갱신한다. 정해 둔 수만큼 켜졌으면 탈출 안내로 바뀐다.
+        /// (발전기 표시에 쓰던 글자 칸을 그대로 쓴다)
+        /// </summary>
+        public void SetFires(int lit, int required)
+        {
+            if (generatorText == null)
+                return;
+
+            if (lit >= required)
+            {
+                generatorText.text = exitOpenMessage;
+                generatorText.color = exitOpenColor;
+            }
+            else
+            {
+                generatorText.text = string.Format(fireFormat, lit, required);
+                generatorText.color = normalColor;
+            }
         }
 
         /// <summary>

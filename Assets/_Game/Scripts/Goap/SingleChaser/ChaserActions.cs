@@ -393,6 +393,8 @@ namespace Squad
             // walk to it. Completing one leg satisfies "wandering" for this
             // planning cycle; the next replan will simply wander again unless a
             // higher-priority goal (chase / investigate) has become available.
+            if (!ctx.Locomotion.HasWanderTarget)
+                ChooseWanderTarget(ctx);
             Vector3 target = ctx.Locomotion.GetWanderTarget();
             bool arrived = ctx.Locomotion.MoveTo(target, ctx.ArriveRadius, ctx.Alert.Level);
             // 마찬가지로 배회 장소에 도착하면
@@ -406,6 +408,63 @@ namespace Squad
                     _pausing = true;
                     _pauseTimer = Random.Range(ctx.WanderPauseMin, ctx.WanderPauseMax);
                 }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 다음에 배회할 곳을 고른다. 아무것도 정하지 않으면 혼자 다닐 때처럼 지금 자리 둘레의 무작위 자리로 간다.
+        ///   켜진 불에 끌림   켜진 모닥불이 있으면 정해 둔 확률(fireAttraction)로 그 불 둘레로 간다 (Fake 적)
+        ///   무리를 따라감   무리의 졸개는 우두머리의 목적지 둘레에서 자기 몫의 자리로 간다 (Real 적)
+        /// </summary>
+        private static void ChooseWanderTarget(ChaserContext ctx)
+        {
+            EnemyTuning tuning = GameTuning.Instance.EnemyFor(ctx.Member);
+
+            if (tuning.fireAttraction > 0f && Random.value < tuning.fireAttraction && TryFireSpot(ctx, tuning, out Vector3 fireSpot))
+            {
+                ctx.Locomotion.SetWanderTarget(fireSpot);
+                return;
+            }
+
+            ChaserPack pack = ctx.Pack;
+            HorrorChaserAgent leader = pack != null ? pack.Leader : null;
+            if (leader == null || leader.transform == ctx.Self)
+                return;
+
+            // 우두머리가 가는 곳(없으면 우두머리가 있는 곳) 둘레에서, 졸개마다 다른 방향의 자리를 맡는다.
+            Vector3 center = leader.Locomotion.HasWanderTarget ? leader.Locomotion.WanderTarget : leader.transform.position;
+            int slot = Mathf.Max(1, pack.SlotOf(ctx.Self.GetComponent<HorrorChaserAgent>()));
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = slot * 137.5f + i * 45f + Random.Range(-20f, 20f);
+                Vector3 spot = center + ZoneMap.Direction(angle) * tuning.packSpread;
+                if (ctx.Locomotion.IsWalkable(spot))
+                {
+                    ctx.Locomotion.SetWanderTarget(spot);
+                    return;
+                }
+            }
+            ctx.Locomotion.SetWanderTarget(center);
+        }
+
+        // 켜진 모닥불 하나를 골라 그 둘레의 걸을 수 있는 자리를 찾는다.
+        private static bool TryFireSpot(ChaserContext ctx, EnemyTuning tuning, out Vector3 spot)
+        {
+            spot = Vector3.zero;
+            var lit = new List<Campfire>();
+            foreach (Campfire campfire in Campfire.All)
+                if (campfire != null && campfire.IsLit)
+                    lit.Add(campfire);
+            if (lit.Count == 0)
+                return false;
+
+            Vector3 fire = lit[Random.Range(0, lit.Count)].transform.position;
+            for (int i = 0; i < 8; i++)
+            {
+                spot = fire + ZoneMap.Direction(Random.Range(0f, 360f)) * Random.Range(4f, tuning.fireGatherRadius);
+                if (ctx.Locomotion.IsWalkable(spot))
+                    return true;
             }
             return false;
         }

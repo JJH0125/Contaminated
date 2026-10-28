@@ -94,9 +94,20 @@ namespace Squad
             _light.range = lightRadius;
         }
 
-        private void OnEnable() => _all.Add(this);
+        // 꺼 두면(꺼진 모닥불) 조명도 꺼지고 불빛 목록에서도 빠진다.
+        private void OnEnable()
+        {
+            _all.Add(this);
+            if (_light != null)
+                _light.enabled = true;
+        }
 
-        private void OnDisable() => _all.Remove(this);
+        private void OnDisable()
+        {
+            _all.Remove(this);
+            if (_light != null)
+                _light.enabled = false;
+        }
 
         private void Update()
         {

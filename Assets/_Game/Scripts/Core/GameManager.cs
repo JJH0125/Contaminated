@@ -70,6 +70,23 @@ namespace Squad
         /// 클리어 조건을 검사하기 위한 발전기 집합.
         /// 각 발전기가 시작할 때 스스로 등록한다.
         private readonly HashSet<Generator> generators = new();
+        // 이번 라운드의 모닥불. 정해 둔 수만큼 켜면 출구가 열린다.
+        private readonly HashSet<Campfire> campfires = new();
+
+        /// 켜진 모닥불의 수
+        public int LitCampfires { get; private set; }
+        /// 출구가 열리려면 켜야 하는 모닥불의 수. 라운드 구성의 값과 실제로 놓인 수 중 작은 쪽이다.
+        public int RequiredCampfires =>
+            Mathf.Min(GameTuning.Instance.stage.Round(CurrentRound).firesToOpenExit,
+                      _placedCampfires >= 0 ? _placedCampfires : campfires.Count);
+
+        // StageLayout이 이번 라운드에 놓은 모닥불의 수. (-1: 아직 모름)
+        // 출구와 모닥불이 등록되는 순서는 정해져 있지 않으므로, 출구가 먼저 등록되어도
+        // "모닥불이 0개니 바로 연다"가 되지 않도록 배치할 때 미리 알려 받는다.
+        private int _placedCampfires = -1;
+
+        /// StageLayout이 배치를 마치고 이번 라운드에 놓은 모닥불의 수를 알린다.
+        public void SetPlacedCampfires(int count) => _placedCampfires = count;
 
         /// 출구
         private Exit _exit;
@@ -285,23 +302,36 @@ namespace Squad
                 return;
 
             _exit = exit;
-            if (openExitAtStart)
-                _exit.Activate();
+            CheckExit();
         }
 
+        // ── 모닥불 ───────────────────────────────────────────────────
+
+        /// 생성된 모닥불이 스스로를 등록한다. (모두 꺼진 채로 시작한다)
+        public void AddCampfire(Campfire campfire)
+        {
+            if (campfire == null)
+                return;
+
+            campfires.Add(campfire);
+            CheckExit();
+        }
+
+        /// 모닥불이 켜질 때 호출한다.
+        public void OnCampfireLit() => CheckExit();
+
         /// <summary>
-        /// 발전기가 켜질 때 호출한다.
-        /// 켜진 수를 다시 세어 표시를 갱신하고, 전부 켜졌으면 탈출구를 연다.
+        /// 켜진 모닥불 수를 다시 세어 표시를 갱신하고, 정해 둔 수만큼 켜졌으면 출구를 연다.
+        /// 발전기는 이제 출구와 상관없다. (발전기 대신 모닥불을 켜는 것이 탈출 조건이다)
+        /// 모닥불이 하나도 놓이지 않은 라운드는 갇히지 않도록 처음부터 연다.
         /// </summary>
         public void CheckExit()
         {
             RefreshStatus();
 
-            if (generators.Count > 0 && ActivatedGenerators >= generators.Count)
-            {
-                if (_exit != null)
-                    _exit.Activate();
-            }
+            bool open = openExitAtStart || LitCampfires >= RequiredCampfires;
+            if (open && _exit != null)
+                _exit.Activate();
         }
 
         /// <summary>
@@ -318,9 +348,15 @@ namespace Squad
             // 값 갱신
             ActivatedGenerators = count;
 
+            int lit = 0;
+            foreach (Campfire campfire in campfires)
+                if (campfire != null && campfire.IsLit)
+                    lit++;
+            LitCampfires = lit;
+
             if (statusPrompt != null)
             {
-                statusPrompt.SetGenerators(ActivatedGenerators, generators.Count);
+                statusPrompt.SetFires(LitCampfires, RequiredCampfires);
                 statusPrompt.SetRound(CurrentRound, totalRounds);
             }
         }
@@ -333,6 +369,8 @@ namespace Squad
         private void ClearExitAndGenerators()
         {
             generators.Clear();
+            campfires.Clear();
+            _placedCampfires = -1;
             _exit = null;
 
             // Stage가 파괴되면 OnTriggerExit이 호출되지 않으므로

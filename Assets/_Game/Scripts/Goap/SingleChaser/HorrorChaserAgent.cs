@@ -50,6 +50,9 @@ namespace Squad
 
         public ChaserLocomotion Locomotion { get; private set; }
 
+        /// 함께 순찰하는 무리. StageLayout이 라운드를 시작할 때 정해 준다. 혼자 다니면 null.
+        public ChaserPack Pack { get; set; }
+
         // Exposed for on-screen debug visualization (see the gizmo section).
         public string CurrentGoalName { get; private set; } = "-";
         public string CurrentActionName => _currentAction?.Name ?? "-";
@@ -85,6 +88,7 @@ namespace Squad
                 WanderPauseMax = wanderPauseMax,
                 Joined = false,
                 ProcessingSpotCount = 0,
+                Pack = Pack,
                 InterceptLeadTime = interceptLeadTime,
                 InterceptSpacing = interceptSpacing,
                 InterceptDirectRadius = interceptDirectRadius

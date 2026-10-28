@@ -118,11 +118,12 @@ namespace Astar3D
         /// 적이나 플레이어가 벽에 바짝 붙어 서면 그 칸이 벽으로 판정될 수 있는데,
         /// 그대로 두면 길찾기가 실패해서 적이 멈춰 버리기 때문에 쓰는 방어 코드.
         /// maxRing 칸 안에 walkable 노드가 없으면 null.
+        /// dimension: 어느 차원에서 걸을 수 있는 칸을 찾는가 (None이면 두 차원 모두에서 걸을 수 있는 칸)
         /// </summary>
-        public Node ClosestWalkableNode(Vector3 worldPosition, int maxRing = 2)
+        public Node ClosestWalkableNode(Vector3 worldPosition, int maxRing = 2, Dimension dimension = Dimension.None)
         {
             Node origin = NodeFromWorldPoint(worldPosition);
-            if (origin.Walkable)
+            if (origin.IsWalkableIn(dimension))
                 return origin;
 
             Node best = null;
@@ -138,7 +139,7 @@ namespace Astar3D
                         continue;
 
                     Node node = _grid[x, y];
-                    if (!node.Walkable)
+                    if (!node.IsWalkableIn(dimension))
                         continue;
 
                     float dist = (node.WorldPosition - worldPosition).sqrMagnitude;
@@ -152,7 +153,7 @@ namespace Astar3D
             return best;
         }
 
-        public IEnumerable<Node> GetNeighbors(Node node)
+        public IEnumerable<Node> GetNeighbors(Node node, Dimension dimension = Dimension.None)
         {
             // 노드 자신과 그 주변의 8개, 총 9개의 노드 중
             // 곧장 도달할 수 있는 노드를 검사.
@@ -183,8 +184,8 @@ namespace Astar3D
                         // 그런 노드는 continue.
                         if (allowDiagonal && dx != 0 && dy != 0)
                         {
-                            if (!_grid[node.GridX + dx, node.GridY].Walkable ||
-                                !_grid[node.GridX, node.GridY + dy].Walkable)
+                            if (!_grid[node.GridX + dx, node.GridY].IsWalkableIn(dimension) ||
+                                !_grid[node.GridX, node.GridY + dy].IsWalkableIn(dimension))
                                 continue;
                         }
                         yield return _grid[checkX, checkY];
@@ -196,8 +197,90 @@ namespace Astar3D
         // 적이 나를 향해 오는 경로의 노드를 담는 List
         public List<Node> DebugPath;
 
-        // 유효한 목표 지점만 뽑도록 하는 방어 코드.
-        public bool IsWalkable(Vector3 worldPos) => NodeFromWorldPoint(worldPos).Walkable;
+        // 유효한 목표 지점만 뽑도록 하는 방어 코드. (None이면 두 차원 모두에서 걸을 수 있는가)
+        public bool IsWalkable(Vector3 worldPos, Dimension dimension = Dimension.None)
+            => NodeFromWorldPoint(worldPos).IsWalkableIn(dimension);
+
+        // ── 차원별 장애물 ────────────────────────────────────────────
+        // 격자는 씬이 시작될 때 한 번 굽지만, 장벽처럼 라운드 중에 생기고 사라지는 장애물은
+        // 굽지 않고 칸마다 "막고 있는 장애물의 수"를 차원별로 더하고 뺀다. (Node.RealBlocks / FakeBlocks)
+        // 수로 세므로 장애물 두 개가 겹친 칸도, 하나가 사라지면 다른 하나 때문에 계속 막혀 있다.
+
+        /// <summary>collider 안에 중심이 들어가는 칸들. (칸의 반경만큼 넉넉하게 잡는다)</summary>
+        public List<Node> NodesInside(Collider collider)
+        {
+            var nodes = new List<Node>();
+            if (_grid == null || collider == null)
+                return nodes;
+
+            Bounds bounds = collider.bounds;
+            Node min = NodeFromWorldPoint(bounds.min);
+            Node max = NodeFromWorldPoint(bounds.max);
+            float reach = nodeRadius * nodeRadius;
+            for (int x = min.GridX; x <= max.GridX; x++)
+            {
+                for (int y = min.GridY; y <= max.GridY; y++)
+                {
+                    Node node = _grid[x, y];
+                    // 칸의 중심을 장애물의 높이로 올려서 잰다. (격자의 높이는 땅과 다를 수 있다)
+                    Vector3 point = node.WorldPosition;
+                    point.y = bounds.center.y;
+                    if ((collider.ClosestPoint(point) - point).sqrMagnitude <= reach)
+                        nodes.Add(node);
+                }
+            }
+            return nodes;
+        }
+
+        /// <summary>조건에 맞는 자리의 칸들. (예: 닫힌 구역 전체)</summary>
+        public List<Node> NodesWhere(System.Func<Vector3, bool> condition)
+        {
+            var nodes = new List<Node>();
+            if (_grid == null)
+                return nodes;
+
+            foreach (Node node in _grid)
+                if (condition(node.WorldPosition))
+                    nodes.Add(node);
+            return nodes;
+        }
+
+        /// <summary>
+        /// 칸들을 그 차원에서 막는다(amount = 1) 또는 막은 것을 푼다(amount = -1).
+        /// dimension이 None이면 두 차원 모두에 적용한다.
+        /// </summary>
+        public static void AddBlock(List<Node> nodes, Dimension dimension, int amount)
+        {
+            if (nodes == null)
+                return;
+
+            foreach (Node node in nodes)
+            {
+                if (dimension != Dimension.Fake)
+                    node.RealBlocks = Mathf.Max(0, node.RealBlocks + amount);
+                if (dimension != Dimension.Real)
+                    node.FakeBlocks = Mathf.Max(0, node.FakeBlocks + amount);
+            }
+        }
+
+        /// <summary>
+        /// position이 그 차원에서 장애물에 막힌 칸이면, 가장 가까운 걸을 수 있는 칸의 자리를 돌려준다.
+        /// 막히지 않았으면 position을 그대로 돌려준다. maxRing 칸 안에도 없으면 null.
+        /// 장벽만 따진다: 원래 나무 기둥 칸(Walkable이 false)에 서 있는 것은 옮길 까닭이 없으므로 그대로 둔다.
+        /// </summary>
+        public Vector3? EscapeBlocked(Vector3 position, Dimension dimension, int maxRing)
+        {
+            if (_grid == null)
+                return position;
+
+            Node origin = NodeFromWorldPoint(position);
+            bool blocked = dimension == Dimension.Fake ? origin.FakeBlocks > 0 : origin.RealBlocks > 0;
+            if (!blocked)
+                return position;
+
+            Node best = ClosestWalkableNode(position, maxRing, dimension);
+            return best != null ? best.WorldPosition : (Vector3?)null;
+        }
 
         /// <summary>
         /// A*가 제대로 동작하는지를,
@@ -222,8 +305,12 @@ namespace Astar3D
                 {
                     /// Walkable 하면 흰색, 그렇지 않으면 빨간색
                     /// 4번째
-                    Gizmos.color = n.Walkable ? new Color(1, 1, 1, 0.5f)    // 투명도 0.5
-                                              : new Color(1, 0, 0, 0.8f);   // 투명도 0.8
+                    // 차원별 장애물: Real에서만 막힘 = 주황, Fake에서만 막힘 = 보라, 둘 다 = 빨강
+                    Gizmos.color = !n.Walkable ? new Color(1, 0, 0, 0.8f)
+                                 : n.RealBlocks > 0 && n.FakeBlocks > 0 ? new Color(1, 0, 0, 0.6f)
+                                 : n.RealBlocks > 0 ? new Color(1, 0.55f, 0, 0.6f)
+                                 : n.FakeBlocks > 0 ? new Color(0.6f, 0.2f, 1, 0.6f)
+                                 : new Color(1, 1, 1, 0.5f);
                     // 큐브의 한가운데 좌표와 큐브의 full size를 받아
                     // 바닥의 격자 무늬를 그림
                     Gizmos.DrawCube(n.WorldPosition,

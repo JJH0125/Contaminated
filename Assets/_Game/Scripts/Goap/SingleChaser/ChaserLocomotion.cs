@@ -29,6 +29,16 @@ namespace Squad
                 return GameTuning.Instance.EnemyFor(_member);
             }
         }
+        // 이 적의 차원. 길을 찾을 때 자기 차원의 장애물만 피한다. (이름표가 없으면 두 차원의 장애물을 모두 피한다)
+        private Dimension MyDimension
+        {
+            get
+            {
+                if (_member == null)
+                    _member = GetComponent<DimensionMember>();
+                return _member != null ? _member.Dimension : Dimension.None;
+            }
+        }
         private float calmMoveSpeed => Tuning.calmMoveSpeed;
         private float suspiciousMoveSpeed => Tuning.suspiciousMoveSpeed;
         private float alertedMoveSpeed => Tuning.alertedMoveSpeed;
@@ -133,7 +143,7 @@ namespace Squad
                 Vector3.Distance(_lastPathTarget, target) > repathThreshold)
             {
                 _path = _pathfinder != null ?
-                _pathfinder.FindPath(Position, target) : null;
+                _pathfinder.FindPath(Position, target, MyDimension) : null;
                 _waypointIndex = 0;
                 _lastPathTarget = target;
             }
@@ -145,7 +155,7 @@ namespace Squad
         /// <summary>
         /// 그 자리에 설 수 있는가(길찾기 격자에서 막히지 않은 칸인가). 격자가 없으면 true.
         /// </summary>
-        public bool IsWalkable(Vector3 position) => _pathfinder == null || _pathfinder.IsWalkable(position);
+        public bool IsWalkable(Vector3 position) => _pathfinder == null || _pathfinder.IsWalkable(position, MyDimension);
 
         private float MoveSpeedFor(AlertLevel alert) => alert switch
         {
@@ -182,7 +192,7 @@ namespace Squad
                 {
                     Vector2 r = Random.insideUnitCircle * wanderRadius;
                     Vector3 candidate = _rigidbody.position + new Vector3(r.x, 0f, r.y);
-                    if (_pathfinder.IsWalkable(candidate))
+                    if (_pathfinder.IsWalkable(candidate, MyDimension))
                     {
                         _wanderTarget = candidate;
                         _hasWanderTarget = true;
@@ -198,6 +208,20 @@ namespace Squad
         /// 새 wanderTarget을 받을 수 있도록 준비한다.
         /// </summary>
         public void ClearWanderTarget() => _hasWanderTarget = false;
+
+        /// 배회할 곳이 정해져 있는가, 그리고 그곳. (무리의 졸개가 우두머리의 목적지를 읽는다)
+        public bool HasWanderTarget => _hasWanderTarget;
+        public Vector3 WanderTarget => _wanderTarget;
+
+        /// <summary>
+        /// 배회할 곳을 직접 정한다. 무리를 따라가거나 켜진 불로 몰려갈 때 쓴다.
+        /// 정하지 않으면 GetWanderTarget이 지금 자리 둘레에서 무작위로 고른다.
+        /// </summary>
+        public void SetWanderTarget(Vector3 target)
+        {
+            _wanderTarget = target;
+            _hasWanderTarget = true;
+        }
 
         /// <summary>
         /// 적이 교착 상태에 빠지는 것을 막기 위한 방어 코드.

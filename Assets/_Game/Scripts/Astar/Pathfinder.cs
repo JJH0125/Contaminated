@@ -17,17 +17,21 @@ namespace Astar3D
 
         private void Awake() => _grid = GetComponent<PathGrid>();
 
-        public bool IsWalkable(Vector3 worldPos) => _grid.IsWalkable(worldPos);
+        public bool IsWalkable(Vector3 worldPos, Dimension dimension = Dimension.None) => _grid.IsWalkable(worldPos, dimension);
+
+        /// 격자 자체. 차원별 장애물을 칸에 더하고 뺄 때 쓴다.
+        public PathGrid Grid => _grid;
 
         /// <summary>
         /// Returns a list of 3D waypoints from start to target, or null if no
         /// path exists.
         /// </summary>
-        public List<Vector3> FindPath(Vector3 startPos, Vector3 targetPos)
+        /// dimension: 그 차원의 장애물만 피한다. 적은 자기 차원을 넘긴다. (None이면 두 차원의 장애물을 모두 피한다)
+        public List<Vector3> FindPath(Vector3 startPos, Vector3 targetPos, Dimension dimension = Dimension.None)
         {
             // 벽에 바짝 붙어 있어서 그 칸이 벽으로 판정되면 가장 가까운 빈 칸에서 출발/도착한다.
-            Node startNode = _grid.ClosestWalkableNode(startPos);
-            Node targetNode = _grid.ClosestWalkableNode(targetPos);
+            Node startNode = _grid.ClosestWalkableNode(startPos, 2, dimension);
+            Node targetNode = _grid.ClosestWalkableNode(targetPos, 2, dimension);
 
             // 주변에도 빈 칸이 없다면 경로 탐색 x
             if (startNode == null || targetNode == null)
@@ -56,10 +60,10 @@ namespace Astar3D
                     return RetracePath(startNode, targetNode);
 
                 // 이웃한 노드들 하나씩 호출
-                foreach (Node neighbor in _grid.GetNeighbors(current))
+                foreach (Node neighbor in _grid.GetNeighbors(current, dimension))
                 {
                     // 이웃한 노드가 벽이거나 이미 방문한 곳일 경우 생략
-                    if (!neighbor.Walkable || closedSet.Contains(neighbor))
+                    if (!neighbor.IsWalkableIn(dimension) || closedSet.Contains(neighbor))
                         continue;
 
                     int tentativeG = current.GCost + Distance(current, neighbor);

@@ -53,6 +53,13 @@ namespace Squad
             if (Time.timeScale == 0f)
                 return;
 
+            // 꺼진 모닥불 곁에서는 E가 불 붙이기다. (CampfireLighter)
+            if (CampfireLighter.HasTarget)
+            {
+                SetPrompt(false);
+                return;
+            }
+
             Stone nearby = HasStone ? null : Stone.Nearest(transform.position, Tuning.pickupRadius);
             SetPrompt(nearby != null);
 

@@ -15,7 +15,7 @@ namespace Squad
     [PostProcess(typeof(FakeContaminationRenderer), PostProcessEvent.BeforeStack, "Custom/Fake Contamination")]
     public sealed class FakeContamination : PostProcessEffectSettings
     {
-        [Range(0f, 1f), Tooltip("효과 전체의 세기. Real로 돌아갈 때 0으로 줄어든다")]
+        [Range(0f, 1f), Tooltip("효과 전체의 세기. 0이면 그리지 않는다")]
         public FloatParameter presence = new FloatParameter { value = 0f };
 
         [Tooltip("물결이 시작된 자리")]
@@ -23,6 +23,15 @@ namespace Squad
 
         [Tooltip("물결이 지금까지 퍼진 거리(m)")]
         public FloatParameter radius = new FloatParameter { value = 0f };
+
+        [Range(0f, 1f), Tooltip("물결이 지나간 자리의 오염 정도 (이번 라운드의 Fake 오염)")]
+        public FloatParameter amount = new FloatParameter { value = 0f };
+
+        [Range(0f, 1f), Tooltip("물결과 상관없이 어디에나 비치는 오염 정도 (이번 라운드의 Real 오염)")]
+        public FloatParameter baseAmount = new FloatParameter { value = 0f };
+
+        [Range(0f, 1f), Tooltip("물결의 세기. Fake에 있으면 1, Real로 돌아오면 0으로 줄어든다")]
+        public FloatParameter waveStrength = new FloatParameter { value = 0f };
 
         // Fake에 있지 않으면 아예 그리지 않아서 화면 처리 비용이 들지 않는다.
         public override bool IsEnabledAndSupported(PostProcessRenderContext context)
@@ -48,6 +57,8 @@ namespace Squad
         private static readonly int FrontGlowId = Shader.PropertyToID("_FrontGlow");
         private static readonly int FrontFadeId = Shader.PropertyToID("_FrontFade");
         private static readonly int AmountId = Shader.PropertyToID("_Amount");
+        private static readonly int BaseAmountId = Shader.PropertyToID("_BaseAmount");
+        private static readonly int WaveStrengthId = Shader.PropertyToID("_WaveStrength");
         private static readonly int SpreadId = Shader.PropertyToID("_Spread");
         private static readonly int StainSizeId = Shader.PropertyToID("_StainSize");
         private static readonly int StainColorId = Shader.PropertyToID("_StainColor");
@@ -91,7 +102,9 @@ namespace Squad
             props.SetColor(FrontColorId, tuning.frontColor);
             props.SetFloat(FrontGlowId, tuning.frontGlow);
             props.SetFloat(FrontFadeId, tuning.frontFadeDistance);
-            props.SetFloat(AmountId, tuning.amount);
+            props.SetFloat(AmountId, settings.amount);
+            props.SetFloat(BaseAmountId, settings.baseAmount);
+            props.SetFloat(WaveStrengthId, settings.waveStrength);
             props.SetFloat(SpreadId, tuning.spread);
             props.SetFloat(StainSizeId, tuning.stainSize);
             props.SetColor(StainColorId, tuning.stainColor);

@@ -143,7 +143,7 @@ namespace Squad
                     float angle = (angleOffset + i * 360f / SearchDirections) * Mathf.Deg2Rad;
                     Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
                     Vector3 position = Grounded(center + direction * ring, terrain);
-                    if (_pathfinder != null && !_pathfinder.IsWalkable(position))
+                    if (_pathfinder != null && !_pathfinder.IsWalkable(position, SpotDimension))
                         continue;
 
                     float score = 0f;

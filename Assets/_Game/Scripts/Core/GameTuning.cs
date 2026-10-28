@@ -61,17 +61,19 @@ namespace Squad
         [Tooltip("차원 이동의 대기·머무는 시간")]
         public DimensionTuning dimension = new();
 
-        [Tooltip("Real 차원 적의 판단, 이동, 경계, 시야")]
-        public EnemyTuning realEnemy = new() { roarRadius = 200f };
-        [Tooltip("Fake 차원 적의 판단, 이동, 경계, 시야")]
-        public EnemyTuning fakeEnemy = new() { roarRadius = 40f };
+        [Tooltip("Real 차원 적의 판단, 이동, 경계, 시야. Real 적은 무리 지어 순찰한다")]
+        public EnemyTuning realEnemy = new() { roarRadius = 200f, packSize = 3, fireAttraction = 0f };
+        [Tooltip("Fake 차원 적의 판단, 이동, 경계, 시야. Fake 적은 각자 다니다가 켜진 불로 몰려간다")]
+        public EnemyTuning fakeEnemy = new() { roarRadius = 40f, packSize = 1, fireAttraction = 0.7f };
         [Tooltip("적 모델에 맞춘 값: 걷는 애니메이션, 잡힐 때의 연출")]
         public EnemyBodyTuning enemyBody = new();
         [Tooltip("발견 신호를 받은 적들이 나눠 맡는 수색 지점")]
         public SearchTuning search = new();
 
-        [Tooltip("라운드 수, 출구, 스테이지 배치")]
+        [Tooltip("라운드 수, 라운드별 구성, 출구, 스테이지 배치")]
         public StageTuning stage = new();
+        [Tooltip("구역 벽, 봉인된 모닥불, 오염 웅덩이, 뿌리")]
+        public MapTuning map = new();
 
         [Tooltip("Fake 차원에 있는 동안의 화면 일렁임과 색")]
         public FakeScreenTuning fakeScreen = new();
@@ -286,6 +288,16 @@ namespace Squad
         [Tooltip("플레이어가 이 거리(m) 안에 있으면 앞질러 가는 적도 곧장 달려든다")]
         public float interceptDirectRadius = 10f;
 
+        [Header("배회 (평소에 다니는 모습)")]
+        [Tooltip("몇 마리씩 무리 지어 다니는가. 1이면 각자 다닌다. 무리의 첫 번째가 목적지를 정하고 나머지는 그 둘레로 따라간다")]
+        [Range(1, 6)] public int packSize = 1;
+        [Tooltip("무리가 따라갈 때 우두머리의 목적지에서 벌어지는 거리(m)")]
+        public float packSpread = 7f;
+        [Tooltip("켜진 모닥불이 있을 때, 배회할 곳을 그 불 둘레로 고를 확률 (0~1). 0이면 불에 끌리지 않는다")]
+        [Range(0f, 1f)] public float fireAttraction = 0f;
+        [Tooltip("불 둘레로 갈 때 불에서 이 거리(m) 안의 자리를 고른다")]
+        public float fireGatherRadius = 14f;
+
         [Header("이동")]
         [Tooltip("Calm 상태일 때 이동 속도(m/s)")]
         public float calmMoveSpeed = 5f;
@@ -382,12 +394,33 @@ namespace Squad
         [Header("라운드")]
         [Tooltip("전체 라운드 수")]
         public int totalRounds = 5;
-        [Tooltip("출구를 처음부터 열어 둘지. 발전기를 없앤 뒤 새 탈출 조건을 정하기 전까지는 켜 둔다")]
-        public bool openExitAtStart = true;
+        [Tooltip("출구를 처음부터 열어 둘지 (시험용). 끄면 정해 둔 수의 모닥불을 켜야 열린다")]
+        public bool openExitAtStart = false;
+
+        [Header("라운드별 구성 (1라운드부터 차례로. 라운드가 이 목록보다 많으면 마지막 것을 쓴다)")]
+        public RoundSetup[] rounds =
+        {
+            new RoundSetup { openZones = 2, campfires = 2, firesToOpenExit = 2, realEnemies = 2, fakeEnemies = 0, contaminationPools = 3,
+                             lightIntensity = 1f, fogDensity = 1f, fakeContamination = 0.5f, realContamination = 0f },
+            new RoundSetup { openZones = 3, campfires = 3, firesToOpenExit = 3, realEnemies = 3, fakeEnemies = 2, contaminationPools = 5,
+                             lightIntensity = 0.8f, fogDensity = 1.2f, fakeContamination = 0.6f, realContamination = 0f },
+            new RoundSetup { openZones = 4, campfires = 3, firesToOpenExit = 3, realEnemies = 5, fakeEnemies = 3, contaminationPools = 6,
+                             lightIntensity = 0.6f, fogDensity = 1.45f, fakeContamination = 0.7f, realContamination = 0.15f },
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
+                             lightIntensity = 0.45f, fogDensity = 1.7f, fakeContamination = 0.8f, realContamination = 0.25f },
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
+                             lightIntensity = 0.4f, fogDensity = 1.8f, fakeContamination = 0.85f, realContamination = 0.3f },
+        };
+
+        /// <summary>그 라운드의 구성. 목록보다 큰 라운드는 마지막 구성을 쓴다.</summary>
+        public RoundSetup Round(int round)
+        {
+            if (rounds == null || rounds.Length == 0)
+                return new RoundSetup();
+            return rounds[Mathf.Clamp(round - 1, 0, rounds.Length - 1)];
+        }
 
         [Header("배치")]
-        [Tooltip("라운드마다 차원별로 놓을 적의 수. 모자란 만큼 같은 차원의 적을 복제한다 (3이면 Real 3마리, Fake 3마리)")]
-        public int enemiesPerDimension = 3;
         [Tooltip("봉우리의 반경(m). 적은 플레이어에게서 이 값의 2배(지름) 이상 떨어져 생성된다")]
         public float hillRadius = 40f;
         [Tooltip("출구의 자리. 지형 한가운데를 (0, 0)으로 본 (x, z)")]
@@ -402,18 +435,111 @@ namespace Squad
         public float objectSpacing = 10f;
 
         [Header("모닥불")]
-        [Tooltip("라운드마다 놓을 모닥불의 개수. 모자란 만큼 복제한다")]
-        public int campfireCount = 6;
-        [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다")]
-        public float campfireSpacing = 40f;
-        [Tooltip("모닥불에서 이 거리(m) 안에 있는 나무와 풀을 치워서 모닥불이 잘 보이게 한다. 0이면 치우지 않는다")]
-        public float campfireClearRadius = 12f;
+        [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다. 덤불 고리가 겹치지 않도록 고리 지름보다 크게 둔다")]
+        public float campfireSpacing = 50f;
 
         [Header("땅에서 띄우는 높이(m)")]
         [Tooltip("출구")]
         public float exitHeight = 13.63f;
         [Tooltip("플레이어. 기준점이 몸 한가운데(발에서 1m 위)이므로 1보다 조금 크게 둔다. 값이 크면 그만큼 공중에서 떨어지며 시작한다")]
         public float playerHeight = 1.2f;
+    }
+
+    /// <summary>한 라운드의 구성. 맵은 모든 라운드가 같고, 열린 구역과 놓이는 것의 수만 달라진다.</summary>
+    [System.Serializable]
+    public class RoundSetup
+    {
+        [Tooltip("열린 구역의 수 (1~4). 출구가 있는 남쪽부터 동 → 서 → 북 순서로 열린다. 닫힌 구역은 두꺼운 덤불로 막힌다")]
+        [Range(1, 4)] public int openZones = 4;
+        [Tooltip("놓을 모닥불의 수. 모두 꺼진 채 Real에서만 막히는 덤불 고리 안에 있다")]
+        public int campfires = 3;
+        [Tooltip("출구가 열리려면 켜야 하는 모닥불의 수. 실제로 놓인 수보다 크면 놓인 수만큼만 켜면 된다")]
+        public int firesToOpenExit = 3;
+        [Tooltip("Real 차원 적의 수")]
+        public int realEnemies = 3;
+        [Tooltip("Fake 차원 적의 수. 0이면 Fake에는 적이 없다")]
+        public int fakeEnemies = 3;
+        [Tooltip("Fake에서만 길을 막는 오염 웅덩이의 수")]
+        public int contaminationPools = 5;
+
+        [Header("분위기")]
+        [Tooltip("씬에 놓아 둔 빛(해·달)과 주변광의 밝기 배율. 1이 씬 그대로이고, 작을수록 어둡다")]
+        [Range(0f, 1.5f)] public float lightIntensity = 1f;
+        [Tooltip("안개 짙기의 배율. 1이 씬 그대로이고, 클수록 가까운 곳까지 안개에 묻힌다")]
+        [Range(0.5f, 3f)] public float fogDensity = 1f;
+        [Tooltip("Fake에 들어갔을 때 드러나는 얼룩의 정도 (보호복의 오염 정도와 같은 뜻, 0~1)")]
+        [Range(0f, 1f)] public float fakeContamination = 0.6f;
+        [Tooltip("Real에도 늘 비치는 얼룩의 정도. 0이면 Real은 깨끗하다. 라운드가 오를수록 Real까지 오염이 번진다")]
+        [Range(0f, 1f)] public float realContamination = 0f;
+    }
+
+    [System.Serializable]
+    public class MapTuning
+    {
+        [Header("구역")]
+        [Tooltip("닫힌 구역을 막는 덤불 벽의 두께(m)")]
+        public float zoneWallThickness = 4f;
+
+        [Header("봉인된 모닥불 (Real에서만 막히는 덤불 고리)")]
+        [Tooltip("모닥불을 둘러싼 덤불 고리의 반지름(m). Fake로 들어가 8초 안에 불까지 가서 켤 수 있어야 하므로 " +
+                 "고리 바깥에서 불까지 걷는 시간 + 켜는 시간이 8초보다 넉넉히 짧게 둔다 (걷기 7.5m/s 기준 18m ≈ 2.4초)")]
+        public float ringRadius = 18f;
+        [Tooltip("덤불 고리의 두께(m)")]
+        public float ringThickness = 3f;
+        [Tooltip("이 거리(m, 평면) 안에서 E를 누르고 있으면 불을 붙인다")]
+        public float lightRadius = 4f;
+        [Tooltip("불이 붙기까지 E를 누르고 있어야 하는 시간(초)")]
+        public float lightHoldTime = 1.5f;
+        [Tooltip("불이 붙은 뒤 덤불 고리가 타서 사라지는 데 걸리는 시간(초). 막는 것은 불이 붙는 순간 바로 풀린다")]
+        public float burnTime = 1.5f;
+
+        [Header("덤불의 모습 (숲의 나무와 풀을 복제해 늘어놓는다)")]
+        [Tooltip("덤불을 늘어놓는 간격(m)")]
+        public float bushSpacing = 3.5f;
+        [Tooltip("덤불 하나의 크기 배율 (최소)")]
+        public float bushScaleMin = 1f;
+        [Tooltip("덤불 하나의 크기 배율 (최대)")]
+        public float bushScaleMax = 1.6f;
+        [Tooltip("덤불을 몇 줄로 늘어놓는가. 1이면 한 줄. 늘리면 벽이 두꺼워 보이지만 그만큼 많아진다")]
+        [Range(1, 3)] public int bushRows = 1;
+        [Tooltip("구역 벽에 큰 나무도 섞을지. 섞으면 벽이 높아 보이지만, 큰 잎이 플레이어를 가리기 쉽다")]
+        public bool zoneWallTrees = false;
+        [Tooltip("닫힌 구역 벽 덤불의 색. 불로도 걷히지 않는 덤불이라 어둡고 거칠게 보이게 한다")]
+        public Color zoneWallTint = new Color(0.35f, 0.3f, 0.35f);
+        [Tooltip("모닥불 고리 덤불의 색")]
+        public Color ringTint = new Color(0.7f, 0.65f, 0.55f);
+
+        [Header("오염 웅덩이 (Fake에서만 막힘)")]
+        [Tooltip("웅덩이 반지름(m, 최소)")]
+        public float poolRadiusMin = 3f;
+        [Tooltip("웅덩이 반지름(m, 최대)")]
+        public float poolRadiusMax = 6f;
+        [Tooltip("웅덩이 가운데의 색")]
+        public Color poolColor = new Color(0.02f, 0.02f, 0.03f);
+        [Tooltip("웅덩이 가장자리의 희미한 빛 색")]
+        public Color poolRimColor = new Color(0.35f, 0.5f, 0.2f);
+
+        [Header("뿌리 (Fake에서만 보임, 꺼진 모닥불에서 출구까지 이어진다)")]
+        [Tooltip("뿌리의 굵기(m)")]
+        public float rootWidth = 0.7f;
+        [Tooltip("뿌리의 색")]
+        public Color rootColor = new Color(0.03f, 0.02f, 0.03f);
+        [Tooltip("뿌리를 따라 흐르는 빛의 색. 출구 쪽으로 흘러간다")]
+        public Color rootPulseColor = new Color(0.45f, 0.65f, 0.25f);
+        [Tooltip("뿌리가 좌우로 구불거리는 정도(m)")]
+        public float rootWiggle = 1.2f;
+
+        [Header("랜드마크 (모든 라운드에 같은 자리. Fake에서는 그을리고 덩굴이 감긴 모습)")]
+        [Tooltip("봉우리 꼭대기와 각 구역의 랜드마크 선돌 크기 배율")]
+        public float landmarkScale = 1f;
+        [Tooltip("Fake에서 랜드마크가 그을린 색")]
+        public Color landmarkCharred = new Color(0.16f, 0.13f, 0.13f);
+        [Tooltip("Fake에서 랜드마크에 감긴 덩굴의 색")]
+        public Color landmarkVineColor = new Color(0.04f, 0.03f, 0.04f);
+
+        [Header("차원 이동 위치 보정")]
+        [Tooltip("넘어간 자리가 그 차원에서 막혀 있으면, 이 거리(m) 안의 가장 가까운 열린 자리로 옮긴다")]
+        public float escapeSearchDistance = 30f;
     }
 
     [System.Serializable]
@@ -459,8 +585,7 @@ namespace Squad
         public float fadeOutTime = 0.5f;
 
         [Header("오염의 흔적 (보호복과 같은 방식으로 번진다)")]
-        [Tooltip("오염 정도. 보호복의 오염 정도와 같은 뜻이다 (0: 깨끗함, 1: 전부 덮임)")]
-        [Range(0f, 1f)] public float amount = 0.6f;
+        // 오염 정도는 라운드마다 다르다: 라운드별 구성(stage.rounds)의 fakeContamination / realContamination
         [Tooltip("번지는 경계의 부드러움. 보호복 셰이더의 값과 같은 뜻이다")]
         [Range(0.01f, 0.5f)] public float spread = 0.15f;
         [Tooltip("얼룩 하나의 크기(m). 클수록 큰 덩어리로 묻는다")]

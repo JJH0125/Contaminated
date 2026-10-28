@@ -21,7 +21,8 @@ namespace Squad
     ///   원래대로 돌아오면 원래 재질을 다시 끼운다. 재질 파일 자체는 바꾸지 않는다.
     ///
     /// 대상은 씬의 "Forest Props"(안쪽 숲)와 "Border Forest"(경계 바깥의 숲) 아래에 있는
-    /// 나무와 풀(ForestMapTool이 만든 것)이다.
+    /// 나무와 풀(ForestMapTool이 만든 것)이다. 숲은 씬이 시작될 때 한 번 모은다.
+    /// 라운드마다 새로 생기는 덤불(구역 벽, 모닥불 고리)은 만드는 쪽이 Register로 따로 알려 준다.
     ///
     /// 씬 구성:
     ///   붙일 필요가 없다. 씬이 열릴 때마다 Main Camera에 스스로 붙는다.
@@ -55,6 +56,15 @@ namespace Squad
         }
 
         private Renderer[] _foliage = new Renderer[0];
+        // 라운드 중에 생긴 덤불. Stage와 함께 사라지면 목록에서 저절로 빠진다.
+        private static readonly List<Renderer> _registered = new();
+
+        /// <summary>라운드 중에 만든 덤불도 플레이어를 가리면 창을 뚫도록 알려 준다.</summary>
+        public static void Register(GameObject root)
+        {
+            if (root != null)
+                _registered.AddRange(root.GetComponentsInChildren<Renderer>(true));
+        }
         private readonly Dictionary<Renderer, Faded> _faded = new();
         // 원래 재질마다 만들어 둔 창 뚫기용 재질
         private readonly Dictionary<Material, Material> _fadeMaterials = new();
@@ -98,9 +108,21 @@ namespace Squad
             _foliage = foliage.ToArray();
         }
 
+        // 플레이어를 가리기 시작한 덤불이면 창을 뚫기 시작한다.
+        private void CheckBlocking(Renderer foliage, Vector3 eye, int targetCount)
+        {
+            if (foliage == null || !foliage.enabled || !foliage.gameObject.activeInHierarchy)
+                return;
+
+            bool blocking = targetCount > 0 && BlocksSight(foliage.bounds, eye, targetCount);
+            if (blocking && !_faded.ContainsKey(foliage))
+                StartFading(foliage);
+        }
+
         private void LateUpdate()
         {
-            if (_fadeShader == null || _foliage.Length == 0)
+            _registered.RemoveAll(part => part == null);
+            if (_fadeShader == null || (_foliage.Length == 0 && _registered.Count == 0))
                 return;
 
             int targetCount = FindSightTargets();
@@ -109,14 +131,9 @@ namespace Squad
             float step = fadeTime > 0f ? Time.deltaTime / fadeTime : 1f;
 
             foreach (Renderer foliage in _foliage)
-            {
-                if (foliage == null || !foliage.enabled || !foliage.gameObject.activeInHierarchy)
-                    continue;
-
-                bool blocking = targetCount > 0 && BlocksSight(foliage.bounds, eye, targetCount);
-                if (blocking && !_faded.ContainsKey(foliage))
-                    StartFading(foliage);
-            }
+                CheckBlocking(foliage, eye, targetCount);
+            foreach (Renderer foliage in _registered)
+                CheckBlocking(foliage, eye, targetCount);
 
             // 창이 뚫린 것들의 열린 정도를 목표로 옮기고, 다 닫힌 것은 원래 재질로 되돌린다.
             _finished.Clear();
