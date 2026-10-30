@@ -506,10 +506,10 @@ Follow.cs의 offset에 대해 수정
 정리하는 것을 추천합니다. 지금 당장 오류가 나는 것은 아니지만, 이름이 내용을 설명하지 못하는 상태입니다.
 
 현재 상태
-namespace	스크립트 수	내용
-Squad	33개	GOAP, 감지, 소리, UI, 음향, 발전기와 출구, 게임 매니저, 에디터 도구까지 거의 전부
-Astar3D	5개	길찾기
-없음	2개	Follow.cs, Player.cs
+namespace 스크립트 수 내용
+Squad 33개 GOAP, 감지, 소리, UI, 음향, 발전기와 출구, 게임 매니저, 에디터 도구까지 거의 전부
+Astar3D 5개 길찾기
+없음 2개 Follow.cs, Player.cs
 Squad는 원래 "분대 AI(협력 추격자)"용으로 붙인 이름으로 보입니다. 지금은 PauseUI, MusicPlayer까지 전부 Squad 안에 있어서, 이름만 보면 분대와 상관없는 코드도 분대 AI의 일부처럼 보입니다.
 
 정리하면 좋은 이유
@@ -519,23 +519,21 @@ Squad는 원래 "분대 AI(협력 추격자)"용으로 붙인 이름으로 보�
 제안하는 구조
 프로젝트 이름을 뿌리로 두고 폴더에 맞춥니다. HorrorGame은 예시이니 원하시는 이름으로 바꾸시면 됩니다.
 
-
-HorrorGame.AI.Goap          Goap.cs (범용 엔진, 게임 이름을 모름)
-HorrorGame.AI.Chaser        HorrorChaserAgent, ChaserActions, ChaserGoals, ChaserLocomotion,
-                            ChaserContext, SquadBlackboard
-HorrorGame.AI.Squad         SquadAgent, Actions (다중 추격자 데모)
-HorrorGame.AI.Pathfinding   Node, NodeHeap, PathGrid, Pathfinder (지금의 Astar3D)
-HorrorGame.Detection        VisionCensor, Sound, SoundLibrary, SoundEmitter
-HorrorGame.Audio            MusicPlayer, SfxPlayer
-HorrorGame.Gameplay         GameManager, Generator, Exit, Portal, Decoy, Dimension*, Player*, Follow
-HorrorGame.UI               UI 폴더 전체
-HorrorGame.Debugging        AlertIcon, SoundRingDisplay
-HorrorGame.Editor           MapBuilder
+HorrorGame.AI.Goap Goap.cs (범용 엔진, 게임 이름을 모름)
+HorrorGame.AI.Chaser HorrorChaserAgent, ChaserActions, ChaserGoals, ChaserLocomotion,
+ChaserContext, SquadBlackboard
+HorrorGame.AI.Squad SquadAgent, Actions (다중 추격자 데모)
+HorrorGame.AI.Pathfinding Node, NodeHeap, PathGrid, Pathfinder (지금의 Astar3D)
+HorrorGame.Detection VisionCensor, Sound, SoundLibrary, SoundEmitter
+HorrorGame.Audio MusicPlayer, SfxPlayer
+HorrorGame.Gameplay GameManager, Generator, Exit, Portal, Decoy, Dimension*, Player*, Follow
+HorrorGame.UI UI 폴더 전체
+HorrorGame.Debugging AlertIcon, SoundRingDisplay
+HorrorGame.Editor MapBuilder
 ChaserAgent.cs는 CLAUDE.md에서 "제거 예정"이라고 한 파일이라, 이번 기회에 지우는 것도 방법입니다.
 
 주의할 점: 버튼 연결 5개
 씬과 프리팹의 거의 모든 참조는 파일 ID(meta의 GUID)로 연결되어 있어서 namespace를 바꿔도 깨지지 않습니다. 하지만 버튼의 OnClick 연결은 클래스 이름을 문자열로 저장합니다. 확인해 보니 5개가 있습니다.
-
 
 Squad.TitleUI (2개), Squad.PauseUI, Squad.ResultUI, Squad.GameOverUI
 namespace를 바꾸면 이 연결이 "Missing"으로 보일 수 있습니다. 씬 파일에서 이 문자열도 함께 바꾸거나, 바꾼 뒤 Unity에서 버튼 5개의 OnClick을 확인하고 다시 연결해야 합니다.
@@ -547,7 +545,6 @@ namespace를 바꾸면 이 연결이 "Missing"으로 보일 수 있습니다. �
 작업 중: Unity 에디터를 닫아 둡니다. 씬 파일을 수정하는 동안 Unity가 씬을 덮어쓰지 않게 하기 위해서입니다.
 작업 후: Unity를 열어 컴파일 에러가 없는지, 버튼이 동작하는지 확인합니다.
 뿌리 이름(HorrorGame 또는 다른 이름)과 위 구조로 진행할지 정해 주시면 작업하겠습니다. 구조가 너무 잘게 나뉘었다고 느끼시면 AI, Gameplay, UI 정도로 더 크게 묶는 방법도 있습니다.
-
 
 c:\Users\ez\Documents\Assets\3D---\Assets\Scripts\SfxPlayer.cs
 음, 그냥 스크립트가 들어있는 폴더의 이름을 따서 namespace를 지어도 되려나?
@@ -582,10 +579,10 @@ SfxPlayer.cs
 SfxPlayer.cs.meta
 UI
 UI.meta
-24:    public static class MapBuilder
+24: public static class MapBuilder
 Player/Follow.cs:12:public class Follow : MonoBehaviour
 Player/Player.cs:17:public class Player : MonoBehaviour
-Player/PlayerStep.cs:21:    public class PlayerStep : MonoBehaviour
+Player/PlayerStep.cs:21: public class PlayerStep : MonoBehaviour
 네, 괜찮습니다. 폴더 이름 = namespace는 C#에서 가장 흔한 규칙이고, Visual Studio나 Rider도 기본으로 이 규칙을 따르라고 권합니다. 폴더를 보면 namespace를 알 수 있어서 따로 외울 것이 없다는 장점이 큽니다.
 
 다만 지금 폴더 구조 그대로 적용하면 걸리는 곳이 네 군데 있습니다.
@@ -597,19 +594,19 @@ Editor 폴더: Unity에는 UnityEditor.Editor라는 클래스가 있어서, Edit
 뿌리 이름이 없으면 일반적인 이름이 됩니다. UI, Objects, Debugging처럼 일반적인 이름을 맨 앞에 두면, 에셋이나 Unity 기능의 이름과 겹칠 여지가 생깁니다. 앞에 프로젝트 이름을 붙여 HorrorGame.UI처럼 쓰는 것이 일반적입니다. 이렇게 해도 규칙은 여전히 "폴더 이름"입니다.
 규칙을 적용한 결과 (예시)
 
-Scripts/                            → HorrorGame (뿌리)
-├─ Astar/                           → HorrorGame.Astar
-├─ Audio/        (새 폴더)          → HorrorGame.Audio        MusicPlayer, SfxPlayer
-├─ Core/         (새 폴더)          → HorrorGame.Core         GameManager, Dimension*
-├─ Characters/   (Player에서 이름 변경) → HorrorGame.Characters  Player, PlayerStep, Follow
-├─ Debugging/                       → HorrorGame.Debugging
-├─ Detection/                       → HorrorGame.Detection
-├─ Editor/                          → HorrorGame.EditorTools  (예외)
-├─ Goap/Basic/                      → HorrorGame.Goap.Basic
-├─ Goap/SingleChaser/               → HorrorGame.Goap.SingleChaser
-├─ Goap/MultipleChaser/             → HorrorGame.Goap.MultipleChaser
-├─ Objects/                         → HorrorGame.Objects
-└─ UI/                              → HorrorGame.UI
+Scripts/ → HorrorGame (뿌리)
+├─ Astar/ → HorrorGame.Astar
+├─ Audio/ (새 폴더) → HorrorGame.Audio MusicPlayer, SfxPlayer
+├─ Core/ (새 폴더) → HorrorGame.Core GameManager, Dimension\*
+├─ Characters/ (Player에서 이름 변경) → HorrorGame.Characters Player, PlayerStep, Follow
+├─ Debugging/ → HorrorGame.Debugging
+├─ Detection/ → HorrorGame.Detection
+├─ Editor/ → HorrorGame.EditorTools (예외)
+├─ Goap/Basic/ → HorrorGame.Goap.Basic
+├─ Goap/SingleChaser/ → HorrorGame.Goap.SingleChaser
+├─ Goap/MultipleChaser/ → HorrorGame.Goap.MultipleChaser
+├─ Objects/ → HorrorGame.Objects
+└─ UI/ → HorrorGame.UI
 고려할 점: Goap/Basic 폴더
 Goap/Basic에는 범용 엔진인 Goap.cs와 이 게임 전용인 SquadBlackboard, ChaserContext가 섞여 있습니다. 폴더 규칙만 따르면 엔진과 게임 전용 코드가 같은 namespace에 들어갑니다. "엔진과 게임 코드의 분리"를 구조로 보여 주고 싶으시면 Goap.cs만 Goap/Engine/ 같은 폴더로 옮기는 것을 추천합니다. 필수는 아닙니다.
 
@@ -629,44 +626,47 @@ A가 놓치면 B가 보고 있어도 "아무도 못 보고 있음"이 된다
 적 각각에게 Level을 부여한다.
 
 또한 차원 이동이 유의미한 재미를 주도록
+
 1. 차원마다 길을 다르게 배치한다.
 2. 필요한 아이템을 다른 차원에 드롭되도록 한다.
 3. 이동에 cost를 추가한다.
 
 또한 차원 이동 직후에 죽는 일이 없도록
+
 1. 건너편 차원의 적이 근처에 있다면 포탈이 경고하도록 한다. (예를 들면 붉게 빛나도록?)
 2. 이동한 직후 누구에게도 감지되지 않는 짧은 텀을 준다.
 
 10/12
 
 해야 할 일
+
 1. 맵 크기에 따른 속도 기준 잡기
 
 한 라운드를 몇 분으로 할지를 먼저 정하면 나머지가 따라와요. 출구에서 봉우리 너머 발전기까지 대략 120~150m예요. 발전기 3개를 돌고 다시 출구로 오면 400~500m쯤 걷게 돼요.
 
-플레이어 속도	맵 가로지르기(200m)	라운드 이동 거리
-15 (현재)	약 13초	약 30초
-8	약 25초	약 1분
-5	약 40초	약 1분 40초
+플레이어 속도 맵 가로지르기(200m) 라운드 이동 거리
+15 (현재) 약 13초 약 30초
+8 약 25초 약 1분
+5 약 40초 약 1분 40초
 
 지금 속도 15면 맵이 금방 좁게 느껴져요. 숨고 피하는 시간을 더하면 달리기 7~8, 걷기 3.5~4 정도가 한 라운드 3~5분이 되는 수준이에요.
 
 추천 값
-항목	지금	추천	근거
-플레이어 달리기 / 걷기	15 / 절반	7~8 / 3.5~4	위 표
-적 Calm	5	3	플레이어가 걸어도 따돌릴 수 있게
-적 Suspicious	8	5	플레이어 걷기보다 조금 빠르게
-적 Alerted	13	7	플레이어 달리기보다 조금 느리게
-배회 반경	6	25~35	아래 문제 2 참고
-시야 거리 (어둠 기준)	18	15~18 유지	아래 설명
-미끼 소리 반경	10	25~35	맵의 1/6 정도 범위
+항목 지금 추천 근거
+플레이어 달리기 / 걷기 15 / 절반 7~8 / 3.5~4 위 표
+적 Calm 5 3 플레이어가 걸어도 따돌릴 수 있게
+적 Suspicious 8 5 플레이어 걷기보다 조금 빠르게
+적 Alerted 13 7 플레이어 달리기보다 조금 느리게
+배회 반경 6 25~35 아래 문제 2 참고
+시야 거리 (어둠 기준) 18 15~18 유지 아래 설명
+미끼 소리 반경 10 25~35 맵의 1/6 정도 범위
 
 2. 발전기 표시 화살표 추가?
 3. Fake 차원일 때 화면에 일렁임, 노이즈 같은 특수 효과 추가
 4. 카메라와 플레이어 사이의 나무 반투명 처리
 5. 적이 내는 소리 추가, 적에게 발각됐을 때의 효과음 추가
 6. 게임 이름 짓기
-이름은 무엇을 가장 먼저 떠올리게 할지에 따라 방향이 갈립니다. 이 게임에서 내세울 만한 축이 네 가지라, 축별로 몇 개씩 뽑아봤어요.
+   이름은 무엇을 가장 먼저 떠올리게 할지에 따라 방향이 갈립니다. 이 게임에서 내세울 만한 축이 네 가지라, 축별로 몇 개씩 뽑아봤어요.
 
 숨는 게임이라는 점
 
@@ -696,8 +696,7 @@ Hum — 발전기의 웅웅거리는 소리. 켜야 나가는데, 그 소리가 
 
 어느 쪽 분위기가 끌리세요? 방향을 정해주시면 그쪽으로 더 다듬어 보겠습니다.
 
-7. 
-
+7.
 
 10/17
 발전기 제거
@@ -705,25 +704,49 @@ Hum — 발전기의 웅웅거리는 소리. 켜야 나가는데, 그 소리가 
 주인공이 기본적으로 걷고, shift를 눌러야 뛰는 것으로 변경
 횃불을 들고 있는 상태에서 space를 꾹 누르고 있으면 횃불을 숨기고 떼면 다시 꺼내도록 변경 (주머니에 손을 대는 모션만 추가하고, 횃불 오브젝트를 활성화/비활성화하도록)
 숨기고 있는 동안 스테미나 게이지가 화면에 등장하고 게이지가 점점 줄어들음. 게이지의 일정 수치마다 효과를 추가함. 게이지가 모두 달면 주인공이 의지와 상관없이 횃불을 강제로 듦. 횃불을 들면 게이지 회복.
-100~50%	하얀 서리 결정이 가장자리에서 천천히 자라 들어옴. 순수하게 "추워진다"는 느낌
+100~50% 하얀 서리 결정이 가장자리에서 천천히 자라 들어옴. 순수하게 "추워진다"는 느낌
 50% 이하 게이지가 붉어지고, 서리 결정 안쪽에 검은 핏줄 무늬가 번지기 시작. 바이저 오염과 같은 무늬로, "추위가 곧 기운"이라는 게 드러남
-0% 직전	서리가 화면의 3분의 1 가까이 덮고 결정이 빠르게 자람
+0% 직전 서리가 화면의 3분의 1 가까이 덮고 결정이 빠르게 자람
 횃불을 들면 서리가 녹듯 가장자리부터 빠르게 물러남
 
 10/28
+
 1. 전체 라운드 흐름
-맵은 4개의 구역으로 나눠짐. 분위기는 라운드가 지날수록 점점 어두워짐.
-1라운드: 두 구역 열림. 모닥불 2개. 적은 Real에만 존재.
-2라운드: 세 구역 열림. 모닥불 3개, 이제부터 적이 두 차원에 모두 존재.
-3라운드: 이제부터 네 구역 모두 열림. 모닥불 3개. 적의 무리가 늘어남.
-4라운드: 모닥불 4개.
-5라운드: 플레이어가 Fake에 갇힘.
+   맵은 4개의 구역으로 나눠짐. 분위기는 라운드가 지날수록 점점 어두워짐.
+   1라운드: 두 구역 열림. 모닥불 2개. 적은 Real에만 존재.
+   2라운드: 세 구역 열림. 모닥불 3개, 이제부터 적이 두 차원에 모두 존재.
+   3라운드: 이제부터 네 구역 모두 열림. 모닥불 3개. 적의 무리가 늘어남.
+   4라운드: 모닥불 4개.
+   5라운드: 플레이어가 Fake에 갇힘.
 
 아직 열리지 않은 구역은 불로도 걷히지 않는 두꺼운 덤불로 막는다. 라운드가 지나면 그쪽이 열리겠다 라는 기대를 갖게 한다.
 
 2. Fake 차원
-땅과 전체 지형은 두 차원이 공유한다. 두 차원이 다른 점은, Real에서는 막힌 것이 보이고 Fake에서는 연결이 보인다의 차이다.
-길을 막는 것: Real에서는 오염된 덤불 장벽이고, Fake에서는 오염된 웅덩이나 쓰러진 나무 등이다.
-모닥불: Real에서는 장벽 안쪽에 있어 다가갈 수 없고 연기만 보인다. Fake에서는 다가갈 수 있다.
-뿌리: Real에서는 보이지 않고, Fake에서는 바닥을 따라 검은 뿌리가 보여 어느 모닥불이 어느 장벽과 이어져 있는지 알 수 있다.
-랜드마크: Real에서는 원래 모습이고, Fake에서는 같은 자리에 있지만 오염되거나 불탄 모습이다.
+   땅과 전체 지형은 두 차원이 공유한다. 두 차원이 다른 점은, Real에서는 막힌 것이 보이고 Fake에서는 연결이 보인다의 차이다.
+   길을 막는 것: Real에서는 오염된 덤불 장벽이고, Fake에서는 오염된 웅덩이나 쓰러진 나무 등이다.
+   모닥불: Real에서는 장벽 안쪽에 있어 다가갈 수 없고 연기만 보인다. Fake에서는 다가갈 수 있다.
+   뿌리: Real에서는 보이지 않고, Fake에서는 바닥을 따라 검은 뿌리가 보여 어느 모닥불이 어느 장벽과 이어져 있는지 알 수 있다.
+   랜드마크: Real에서는 원래 모습이고, Fake에서는 같은 자리에 있지만 오염되거나 불탄 모습이다.
+   적: Real에서는 무리지어 순찰하고, Fake에서는 각자 움직이며 불이 켜지는 즉시 달려간다.
+
+전시용 설정
+볼륨: 라운드 1개, 구역 2개, 모닥불 2개, Real에 2~3마리의 적 + Fake에 1~2마리의 적
+야외 모드: 소음이 많은 환경에서 플레이할 것을 고려하여, 플레이어가 들을 만한 소리 정보를 시각 정보로 치환하는 모드. 설정에서 켜고 끄기 가능
+
+전시판에 넣으면 좋은 것
+자동 복귀: 클리어하거나 게임 오버가 되면 몇 초 뒤 자동으로 타이틀로 돌아가요. 한동안 아무 입력이 없을 때도 타이틀로 돌아가요. 다음 관람객이 바로 시작할 수 있어요.
+발표자용 숨김 키: 교수님이나 심사위원에게 보여 줄 때 다른 라운드로 바로 넘어가는 키를 하나 두세요. 관람객은 모르게요.
+대기 화면 (선택): 아무도 플레이하지 않을 때 AI 시각화 모드를 켠 채 적들이 혼자 순찰하는 화면을 띄워 두면, 지나가는 사람에게 GOAP가 무엇을 하는지 보여 줄 수 있어요.
+
+고쳐야 할 점
+Real 적 포효 반경이 200m로 들어가 있어요. GameTuning으로 옮길 때 "프리팹에 저장된 실제 값을 그대로 옮겼다"고 했는데, 200은 제가 테스트용으로 잠깐 넓혀 보라고 한 값이에요. 지금 상태면 Real 무리 3마리가 들킬 때마다 맵 전체의 Real 적이 몰려와요. 40으로 되돌리세요.
+횃불을 든 채로만 불을 켤 수 있게 해야 해요.
+설계에서 달라진 점
+
+계획은 "길목을 막는 장벽을 불로 걷어 새 길을 연다"였는데, 구현은 모닥불을 두른 18m 고리가 됐고, 뿌리는 "어느 불이 어느 장벽을 여는지"가 아니라 **”불에서 출구까지의 길잡이"**가 됐어요. 맵에는 관문이 없고, 열린 숲에 고리와 웅덩이가 흩어져 있는 형태예요.
+
+제 판단은 이대로 가도 된다예요.
+
+남은 3주 안에 관문 구조로 다시 짜는 건 위험해요.
+고리가 열리면 그 안쪽 Real 칸이 열리니, 4번 알림만 붙이면 "열린 고리 안을 가로지르는 지름길로 경로가 바뀌는" 장면은 나와요.
+Fake 적이 켜진 불로 몰려가고, 불붙는 소리가 두 차원에 퍼지는 것까지 들어가서, "불을 켤수록 위험해진다"는 긴장은 충분히 살아 있어요.

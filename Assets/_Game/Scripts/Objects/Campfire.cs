@@ -8,15 +8,16 @@ namespace Squad
     ///
     ///   꺼져 있을 때  Real에서만 막히는 덤불 고리 안에 있어 Real에서는 다가갈 수 없다. 연기만 피어올라 자리를 알려 준다.
     ///                 Fake에서는 고리가 없으므로 들어가서 켤 수 있다 (E를 누르고 있기, CampfireLighter)
-    ///                 Fake에서만 보이는 뿌리가 이 불에서 출구까지 이어져 있다
-    ///   켜질 때      덤불 고리가 타서 사라지고, 뿌리도 타서 사라진다. 불붙는 소리가 두 차원에 퍼져 적이 몰려온다
+    ///                 Fake에서만 보이는 뿌리가 이 불에서 출구까지, 그리고 이 불이 여는 관문까지 이어져 있다
+    ///   켜질 때      덤불 고리와, 이 불과 이어진 관문의 덤불이 타서 열리고, 뿌리도 타서 사라진다.
+    ///                불붙는 소리가 두 차원에 퍼져 적이 몰려온다
     ///   켜진 뒤      꺼지지 않는 불빛으로 길잡이가 되는 동시에, 그 옆에 선 플레이어를 적에게 드러낸다 (FireSource)
     ///
     /// 불빛과 "불빛에 드러난 자리인가" 판단은 같은 오브젝트의 FireSource가 맡는다. 꺼져 있는 동안은 FireSource를 꺼 둔다.
     ///
     /// 씬 구성:
     ///   같은 오브젝트에 FireSource를 붙이고, 모닥불 모델(FirePit)과 불꽃(LargeFlames)은 자식으로 둔다.
-    ///   덤불 고리와 뿌리는 StageLayout이 만들어 Seal로 넘겨준다.
+    ///   덤불 고리, 관문, 뿌리는 StageLayout이 만들어 Seal / LinkGate / ConnectRoot로 넘겨준다.
     /// </summary>
     public class Campfire : MonoBehaviour
     {
@@ -33,13 +34,27 @@ namespace Squad
         private GameObject _flames;
         private ParticleSystem _smoke;
         private DimensionObstacle _ring;
-        private RootLine _root;
+        // 이 불을 켜면 열리는 관문 (Real에서만 막힌 덤불)
+        private readonly List<DimensionObstacle> _gates = new();
+        // 이 불에서 출구와 관문으로 뻗은 뿌리
+        private readonly List<RootLine> _roots = new();
 
         /// <summary>StageLayout이 이 불을 둘러싼 덤불 고리를 넘겨준다. 불이 붙으면 고리가 타서 열린다.</summary>
         public void Seal(DimensionObstacle ring) => _ring = ring;
 
-        /// <summary>StageLayout이 이 불에서 출구까지 뻗은 뿌리를 넘겨준다. 불이 붙으면 뿌리가 타서 사라진다.</summary>
-        public void ConnectRoot(RootLine root) => _root = root;
+        /// <summary>StageLayout이 이 불을 켜면 열릴 관문을 넘겨준다.</summary>
+        public void LinkGate(DimensionObstacle gate)
+        {
+            if (gate != null && !_gates.Contains(gate))
+                _gates.Add(gate);
+        }
+
+        /// <summary>StageLayout이 이 불에서 뻗은 뿌리(출구까지, 관문까지)를 넘겨준다. 불이 붙으면 뿌리가 타서 사라진다.</summary>
+        public void ConnectRoot(RootLine root)
+        {
+            if (root != null)
+                _roots.Add(root);
+        }
 
         private void Awake()
         {
@@ -72,8 +87,16 @@ namespace Squad
                 _ring.Open();
                 BurnAway.Play(_ring.gameObject, burnTime);
             }
-            if (_root != null)
-                _root.Burn();
+            foreach (DimensionObstacle gate in _gates)
+            {
+                if (gate == null)
+                    continue;
+                gate.Open();
+                BurnAway.Play(gate.gameObject, burnTime);
+            }
+            foreach (RootLine root in _roots)
+                if (root != null)
+                    root.Burn();
 
             // 불붙는 소리는 차원을 넘어 퍼진다. 고리가 열린 불가에 두 차원의 적이 모여든다.
             SoundEmitter.Emit(transform.position, SoundList.FireLit, (1 << 8) | (1 << 9), Dimension.None, gameObject);

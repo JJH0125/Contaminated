@@ -65,6 +65,8 @@ namespace Squad
         private List<Vector3> _path;
         private int _waypointIndex;
         private Vector3 _lastPathTarget;
+        // 경로를 찾을 때의 PathGrid.Version. 막힌 칸이 바뀌면 경로를 다시 찾는다.
+        private int _pathGridVersion;
         private bool _hasWanderTarget;
         private Vector3 _wanderTarget;
         private Pathfinder _pathfinder;
@@ -137,15 +139,18 @@ namespace Squad
 
             // path가 비어있거나
             // path를 모두 건너왔거나
-            // 플레이어가 유의미하게 움직였다면
+            // 플레이어가 유의미하게 움직였거나
+            // 막힌 칸이 바뀌었다면 (덤불 고리가 열리면 그 안을 가로지르는 지름길이 생긴다)
             if (_path == null ||
                 _waypointIndex >= _path.Count ||
-                Vector3.Distance(_lastPathTarget, target) > repathThreshold)
+                Vector3.Distance(_lastPathTarget, target) > repathThreshold ||
+                _pathGridVersion != PathGrid.Version)
             {
                 _path = _pathfinder != null ?
                 _pathfinder.FindPath(Position, target, MyDimension) : null;
                 _waypointIndex = 0;
                 _lastPathTarget = target;
+                _pathGridVersion = PathGrid.Version;
             }
 
             FollowPath(MoveSpeedFor(alert));

@@ -62,7 +62,7 @@ namespace Squad
         public DimensionTuning dimension = new();
 
         [Tooltip("Real 차원 적의 판단, 이동, 경계, 시야. Real 적은 무리 지어 순찰한다")]
-        public EnemyTuning realEnemy = new() { roarRadius = 200f, packSize = 3, fireAttraction = 0f };
+        public EnemyTuning realEnemy = new() { roarRadius = 40f, packSize = 3, fireAttraction = 0f };
         [Tooltip("Fake 차원 적의 판단, 이동, 경계, 시야. Fake 적은 각자 다니다가 켜진 불로 몰려간다")]
         public EnemyTuning fakeEnemy = new() { roarRadius = 40f, packSize = 1, fireAttraction = 0.7f };
         [Tooltip("적 모델에 맞춘 값: 걷는 애니메이션, 잡힐 때의 연출")]
@@ -436,7 +436,7 @@ namespace Squad
 
         [Header("모닥불")]
         [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다. 덤불 고리가 겹치지 않도록 고리 지름보다 크게 둔다")]
-        public float campfireSpacing = 50f;
+        public float campfireSpacing = 40f;
 
         [Header("땅에서 띄우는 높이(m)")]
         [Tooltip("출구")]
@@ -480,10 +480,24 @@ namespace Squad
         [Tooltip("닫힌 구역을 막는 덤불 벽의 두께(m)")]
         public float zoneWallThickness = 4f;
 
+        [Header("관문 (열린 두 구역 사이의 벽에 뚫린 틈)")]
+        [Tooltip("관문의 너비(m)")]
+        public float gateWidth = 10f;
+        [Tooltip("늘 열려 있는 관문의 자리. 봉우리 꼭대기에서 벽을 따라 잰 거리(m). 0이면 두지 않는다")]
+        public float openGateDistance = 85f;
+        [Tooltip("Real에서만 덤불로 막힌 관문의 자리(m). 봉우리 비탈의 지름길이다. 가장 가까운 모닥불을 켜면 타서 열린다. " +
+                 "Fake에서는 늘 지나갈 수 있다. 0이면 두지 않는다")]
+        public float sealedGateDistance = 30f;
+        [Tooltip("관문 둘레에서 모닥불 고리, 웅덩이, 적을 놓지 않고 비워 두는 거리(m). 길목이 막히지 않게 한다")]
+        public float gateClearance = 8f;
+        [Tooltip("Real에서만 막힌 관문 덤불의 색. 모닥불 고리처럼 불로 걷히는 덤불이라 같은 색으로 둔다")]
+        public Color sealedGateTint = new Color(0.7f, 0.65f, 0.55f);
+
         [Header("봉인된 모닥불 (Real에서만 막히는 덤불 고리)")]
         [Tooltip("모닥불을 둘러싼 덤불 고리의 반지름(m). Fake로 들어가 8초 안에 불까지 가서 켤 수 있어야 하므로 " +
-                 "고리 바깥에서 불까지 걷는 시간 + 켜는 시간이 8초보다 넉넉히 짧게 둔다 (걷기 7.5m/s 기준 18m ≈ 2.4초)")]
-        public float ringRadius = 18f;
+                 "고리 바깥에서 불까지 걷는 시간 + 켜는 시간이 8초보다 넉넉히 짧게 둔다 (걷기 7.5m/s 기준 13m ≈ 1.7초). " +
+                 "고리는 구역 벽에 걸치지 않고 한 구역 안에 들어가야 하므로, 크게 두면 한 구역에 고리가 하나밖에 들어가지 않아 모닥불이 덜 놓인다")]
+        public float ringRadius = 13f;
         [Tooltip("덤불 고리의 두께(m)")]
         public float ringThickness = 3f;
         [Tooltip("이 거리(m, 평면) 안에서 E를 누르고 있으면 불을 붙인다")]
@@ -519,7 +533,7 @@ namespace Squad
         [Tooltip("웅덩이 가장자리의 희미한 빛 색")]
         public Color poolRimColor = new Color(0.35f, 0.5f, 0.2f);
 
-        [Header("뿌리 (Fake에서만 보임, 꺼진 모닥불에서 출구까지 이어진다)")]
+        [Header("뿌리 (Fake에서만 보임, 꺼진 모닥불에서 출구와, 그 불이 여는 관문까지 이어진다)")]
         [Tooltip("뿌리의 굵기(m)")]
         public float rootWidth = 0.7f;
         [Tooltip("뿌리의 색")]

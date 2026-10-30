@@ -24,17 +24,27 @@ namespace Squad
         [SerializeField] private string promptMessage = "[E] 길게 눌러 불 붙이기";
         [Tooltip("누르고 있는 동안의 문구. {0}=진행도(%)")]
         [SerializeField] private string progressFormat = "불 붙이는 중... {0:0}%";
+        [Tooltip("횃불을 숨기고 있을 때(또는 횃불이 없을 때) 꺼진 모닥불 곁에서 띄울 문구")]
+        [SerializeField] private string needTorchMessage = "횃불을 꺼내야 불을 붙일 수 있다";
 
         /// 지금 플레이어 곁에 켤 수 있는 모닥불이 있는가. 있으면 돌을 줍고 던지지 않는다. (StoneHolder가 읽는다)
         public static bool HasTarget { get; private set; }
 
         private Player _player;
+        private TorchHolder _torchHolder;
         private float _held;
         private bool _locked;
         private bool _promptShown;
         private string _shownMessage;
 
-        private void Awake() => _player = GetComponent<Player>();
+        private void Awake()
+        {
+            _player = GetComponent<Player>();
+            _torchHolder = GetComponent<TorchHolder>();
+        }
+
+        // 횃불을 손에 들고 있는가. 숨기고 있거나 횃불이 없으면 불을 붙일 수 없다.
+        private bool HoldingTorch => _torchHolder != null && _torchHolder.HasTorch && !TorchHolder.IsHiding;
 
         private void Update()
         {
@@ -48,6 +58,14 @@ namespace Squad
             {
                 Release();
                 SetPrompt(null);
+                return;
+            }
+
+            // 횃불을 든 채로만 불을 붙인다. 누르던 중에 숨기면 처음부터 다시 누른다.
+            if (!HoldingTorch)
+            {
+                Release();
+                SetPrompt(needTorchMessage);
                 return;
             }
 

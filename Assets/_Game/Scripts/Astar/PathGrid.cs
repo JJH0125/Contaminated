@@ -261,7 +261,14 @@ namespace Astar3D
                 if (dimension != Dimension.Real)
                     node.FakeBlocks = Mathf.Max(0, node.FakeBlocks + amount);
             }
+            Version++;
         }
+
+        /// <summary>
+        /// 막힌 칸이 바뀔 때마다 1씩 오른다. (장벽이 세워지거나 덤불 고리가 타서 열릴 때)
+        /// 적은 경로를 찾을 때의 값을 기억해 두었다가, 값이 바뀌면 경로를 다시 찾는다.
+        /// </summary>
+        public static int Version { get; private set; }
 
         /// <summary>
         /// position이 그 차원에서 장애물에 막힌 칸이면, 가장 가까운 걸을 수 있는 칸의 자리를 돌려준다.

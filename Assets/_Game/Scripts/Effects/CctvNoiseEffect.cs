@@ -105,7 +105,8 @@ namespace Squad
             // 0.6~1배 사이로 불규칙하게 출렁인다.
             float flicker = 0.6f + 0.4f * Mathf.PerlinNoise(Time.unscaledTime * flickerSpeed, 0f);
             float intensity = closeness * maxIntensity * flicker + _spike * 0.4f * closeness;
-            _noise.intensity.value = Mathf.Clamp01(intensity);
+            // 디버그용 깨끗한 화면(F2)에서는 화면 노이즈만 끈다. (지지직 소리는 그대로 내서 적이 가까운 걸 알 수 있게 한다)
+            _noise.intensity.value = CleanViewDebug.On ? 0f : Mathf.Clamp01(intensity);
 
             // 소리도 화면과 같은 세기로 출렁이고 튄다.
             float sfxVolume = SfxPlayer.Instance != null ? SfxPlayer.Instance.Volume : FallbackSfxVolume;

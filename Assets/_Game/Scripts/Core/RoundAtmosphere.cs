@@ -11,6 +11,8 @@ namespace Squad
     /// 값은 씬에 저장된 값을 기준으로 라운드별 구성(stage.rounds)의 배율을 곱한다.
     /// 씬의 값은 처음 한 번만 읽어 기억해 두므로, 라운드를 거듭해도 배율이 겹쳐 곱해지지 않는다.
     ///
+    /// 디버그용 깨끗한 화면(CleanViewDebug, F2)이 켜져 있으면 밝기는 씬 그대로 두고 안개를 끈다.
+    ///
     /// StageLayout이 라운드를 시작할 때 부른다.
     /// </summary>
     public static class RoundAtmosphere
@@ -20,20 +22,35 @@ namespace Squad
         private static Color _ambientSky, _ambientEquator, _ambientGround;
         private static float _ambientIntensity;
         private static float _fogDensity;
+        private static bool _fog;
+        // 마지막으로 적용한 라운드의 구성. 깨끗한 화면을 켜고 끌 때 다시 적용한다.
+        private static RoundSetup _current;
 
         public static void Apply(RoundSetup round)
         {
+            _current = round;
             Capture();
+
+            bool clean = CleanViewDebug.On;
+            float light = clean ? 1f : round.lightIntensity;
 
             foreach (KeyValuePair<Light, float> sun in _sunIntensity)
                 if (sun.Key != null)
-                    sun.Key.intensity = sun.Value * round.lightIntensity;
+                    sun.Key.intensity = sun.Value * light;
 
-            RenderSettings.ambientSkyColor = _ambientSky * round.lightIntensity;
-            RenderSettings.ambientEquatorColor = _ambientEquator * round.lightIntensity;
-            RenderSettings.ambientGroundColor = _ambientGround * round.lightIntensity;
-            RenderSettings.ambientIntensity = _ambientIntensity * round.lightIntensity;
+            RenderSettings.ambientSkyColor = _ambientSky * light;
+            RenderSettings.ambientEquatorColor = _ambientEquator * light;
+            RenderSettings.ambientGroundColor = _ambientGround * light;
+            RenderSettings.ambientIntensity = _ambientIntensity * light;
             RenderSettings.fogDensity = _fogDensity * round.fogDensity;
+            RenderSettings.fog = _fog && !clean;
+        }
+
+        /// <summary>지금 라운드의 구성을 다시 적용한다. (깨끗한 화면을 켜고 껐을 때)</summary>
+        public static void Refresh()
+        {
+            if (_current != null)
+                Apply(_current);
         }
 
         // 씬에 저장된 값을 한 번만 읽어 둔다. (씬을 다시 불러오면 Light가 바뀌므로 그때는 다시 읽는다)
@@ -58,6 +75,7 @@ namespace Squad
                 _ambientGround = RenderSettings.ambientGroundColor;
                 _ambientIntensity = RenderSettings.ambientIntensity;
                 _fogDensity = RenderSettings.fogDensity;
+                _fog = RenderSettings.fog;
             }
             _captured = true;
         }
