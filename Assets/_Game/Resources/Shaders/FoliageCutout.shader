@@ -26,6 +26,10 @@ Shader "Hidden/Custom/FoliageCutout"
         _Glossiness ("매끄러움", Range(0, 1)) = 0
         _Metallic ("금속성", Range(0, 1)) = 0
         _Fade ("창이 닫힌 정도", Range(0, 1)) = 1
+        _GrimeTex ("오염 텍스처", 2D) = "black" {}
+        _GrimeSize ("텍스처 한 장의 크기(m)", Float) = 5
+        _GrimeAmount ("덮는 정도 (오염 덤불·바위만)", Range(0, 1)) = 0
+        _GrimeTint ("오염 색", Color) = (1, 1, 1, 1)
     }
 
     SubShader
@@ -36,6 +40,8 @@ Shader "Hidden/Custom/FoliageCutout"
         CGPROGRAM
         #pragma surface surf Standard fullforwardshadows
         #pragma target 3.0
+
+        #include "Assets/_Game/Resources/Shaders/ContaminatedGrime.cginc"
 
         sampler2D _MainTex;
         fixed4 _Color;
@@ -53,6 +59,8 @@ Shader "Hidden/Custom/FoliageCutout"
         {
             float2 uv_MainTex;
             float4 screenPos;
+            float3 worldPos;
+            float3 worldNormal;
         };
 
         // 4x4 바둑판의 칸마다 정해 둔 기준값(0~1). 원의 가장자리를 고르게 흩뜨리는 데만 쓴다.
@@ -85,7 +93,7 @@ Shader "Hidden/Custom/FoliageCutout"
                 clip(keep - Bayer[index] - 0.001);
             }
 
-            o.Albedo = c.rgb;
+            o.Albedo = ApplyGrime(c.rgb / max(_Color.rgb, 0.001), IN.worldPos, IN.worldNormal) * _Color.rgb;
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
             o.Alpha = c.a;

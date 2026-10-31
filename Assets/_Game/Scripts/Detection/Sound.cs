@@ -22,7 +22,7 @@ namespace Squad
         [Tooltip("소리가 차원을 초월하는지")]
         [SerializeField] private bool canCrossDimension;
         [Tooltip("소리가 날 때 재생할 효과음. 비워두면 적에게만 들리고 플레이어에게는 들리지 않는다.\n" +
-                 "발전기처럼 계속 나는 소리는 비워두고, 그 오브젝트에 AudioSource를 붙여 반복 재생한다")]
+                 "계속 이어지는 소리는 비워두고, 그 오브젝트에 AudioSource를 붙여 반복 재생한다")]
         [SerializeField] private AudioClip clip;
 
         public string Name => name;
@@ -44,7 +44,7 @@ namespace Squad
     }
 
     /// <summary>
-    /// 소리를 쓰는 쪽(발소리, 발전기 등)이 SoundList.Walking의 형식으로 소리를 호출하는 게이트.
+    /// 소리를 쓰는 쪽(발소리, 미끼 돌 등)이 SoundList.Walking의 형식으로 소리를 호출하는 게이트.
     /// 실제 값은 Resources/SoundLibrary 에셋에서 읽는다.
     /// 에셋이 없으면 경고를 한 번 띄우고 기본값으로 동작한다.
     /// </summary>
@@ -79,7 +79,6 @@ namespace Squad
         /// 외부에서 SoundList.Walking을 호출하면, 위의 Library 함수를 실행한다.
         public static Sound Walking => Library.Walking;
         public static Sound Running => Library.Running;
-        public static Sound Generator => Library.Generator;
         public static Sound Decoy => Library.Decoy;
         public static Sound DimensionShift => Library.DimensionShift;
         public static Sound FireLit => Library.FireLit;

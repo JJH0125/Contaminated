@@ -129,7 +129,11 @@ namespace Squad
 
             if (Time.unscaledTime >= _nextRefreshTime)
             {
-                _enemies = FindObjectsOfType<DimensionMember>();
+                // 이름표(DimensionMember)는 덤불 고리와 뿌리 같은 것에도 달리므로, 적(두뇌가 있는 것)에서 찾는다.
+                HorrorChaserAgent[] agents = FindObjectsOfType<HorrorChaserAgent>();
+                _enemies = new DimensionMember[agents.Length];
+                for (int i = 0; i < agents.Length; i++)
+                    _enemies[i] = agents[i].GetComponent<DimensionMember>();
                 _nextRefreshTime = Time.unscaledTime + EnemyRefreshInterval;
             }
 

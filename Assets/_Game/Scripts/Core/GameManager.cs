@@ -18,8 +18,8 @@ namespace Squad
     ///
     /// 담당하는 것:
     ///   - 게임 상태(타이틀/플레이/일시정지/게임오버/결과) 전환
-    ///   - 발전기와 출구 관리
-    ///   - 라운드 수/발전기 수 표시
+    ///   - 모닥불과 출구 관리
+    ///   - 라운드 수/켜진 모닥불 수 표시
     ///   - 클리어 조건 판정과 탈출구 활성화
     ///
     /// UI는 상태에 맞춰 켜고 끄기만 하며, 내용 갱신은 각 UI 클래스에 맡긴다.
@@ -41,7 +41,7 @@ namespace Squad
         [SerializeField] private GameObject titleUI;
         [Tooltip("게임 플레이 중 표시되는 UI 묶음")]
         [SerializeField] private GameObject gameUI;
-        [Tooltip("진행 상황 표시 (라운드, 발전기)")]
+        [Tooltip("진행 상황 표시 (라운드, 모닥불)")]
         [SerializeField] private StatusPrompt statusPrompt;
         [Tooltip("일시정지 화면")]
         [SerializeField] private GameObject pauseUI;
@@ -64,12 +64,6 @@ namespace Squad
         /// 전체 라운드 수
         public int TotalRounds => totalRounds;
 
-        /// 켜진 발전기의 수
-        public int ActivatedGenerators { get; private set; }
-
-        /// 클리어 조건을 검사하기 위한 발전기 집합.
-        /// 각 발전기가 시작할 때 스스로 등록한다.
-        private readonly HashSet<Generator> generators = new();
         // 이번 라운드의 모닥불. 정해 둔 수만큼 켜면 출구가 열린다.
         private readonly HashSet<Campfire> campfires = new();
 
@@ -109,7 +103,7 @@ namespace Squad
         {
             // 다른 오브젝트들의 Awake가 끝난 뒤에 화면을 구성하도록
             // Awake가 아니라 Start에서 초기 상태를 설정한다.
-            // 발전기 수 표시는 발전기가 등록될 때마다(AddGenerator) 갱신된다.
+            // 모닥불 수 표시는 모닥불이 등록될 때마다(AddCampfire) 갱신된다.
             ChangeState(GameState.Title);
             RefreshStatus();
         }
@@ -119,7 +113,7 @@ namespace Squad
         public void StartGame()
         {
             ChangeState(GameState.Playing);
-            ClearExitAndGenerators();
+            ClearExitAndCampfires();
             currentStage = Instantiate(stage, Vector3.zero, Quaternion.identity);
         }
 
@@ -154,7 +148,7 @@ namespace Squad
                 Destroy(currentStage);
             currentStage = null;
 
-            ClearExitAndGenerators();
+            ClearExitAndCampfires();
             CurrentRound = 1;
             RefreshStatus();
             ChangeState(GameState.Title);
@@ -183,7 +177,7 @@ namespace Squad
             if (currentStage != null)
                 Destroy(currentStage);
                 
-            ClearExitAndGenerators();
+            ClearExitAndCampfires();
         }
 
         /// <summary>
@@ -210,7 +204,7 @@ namespace Squad
             if (currentStage != null)
                 Destroy(currentStage);
 
-            ClearExitAndGenerators();
+            ClearExitAndCampfires();
         }
 
         private void ChangeState(GameState newState)
@@ -280,21 +274,6 @@ namespace Squad
                 target.SetActive(value);
         }
 
-        // ── 발전기 ───────────────────────────────────────────────────
-
-        /// <summary>
-        /// 생성된 발전기가 스스로를 등록한다.
-        /// Stage는 게임 시작 후에 생성되므로, 등록될 때마다 표시를 갱신한다.
-        /// </summary>
-        public void AddGenerator(Generator generator)
-        {
-            if (generator != null)
-            {
-                generators.Add(generator);
-                RefreshStatus();
-            }
-        }
-
         /// 생성된 출구가 스스로를 등록한다.
         public void AddExit(Exit exit)
         {
@@ -322,12 +301,15 @@ namespace Squad
 
         /// <summary>
         /// 켜진 모닥불 수를 다시 세어 표시를 갱신하고, 정해 둔 수만큼 켜졌으면 출구를 연다.
-        /// 발전기는 이제 출구와 상관없다. (발전기 대신 모닥불을 켜는 것이 탈출 조건이다)
         /// 모닥불이 하나도 놓이지 않은 라운드는 갇히지 않도록 처음부터 연다.
         /// </summary>
         public void CheckExit()
         {
             RefreshStatus();
+
+            // 출구 덤불 아치는 켠 수만큼 타고, 다 켜면 열린다.
+            if (ExitArch.Current != null)
+                ExitArch.Current.SetProgress(openExitAtStart ? 1 : LitCampfires, openExitAtStart ? 1 : RequiredCampfires);
 
             bool open = openExitAtStart || LitCampfires >= RequiredCampfires;
             if (open && _exit != null)
@@ -335,19 +317,11 @@ namespace Squad
         }
 
         /// <summary>
-        /// 켜진 발전기 수를 다시 세어, 화면에 표시될 ActivatedGenerators 값을 갱신한다.
+        /// 켜진 모닥불 수를 다시 세어, 화면에 표시될 LitCampfires 값을 갱신한다.
         /// 호출할 때마다 0부터 세므로 여러 번 불러도 값이 누적되지 않는다.
         /// </summary>
         private void RefreshStatus()
         {
-            int count = 0;
-            foreach (Generator generator in generators)
-                if (generator != null && generator.IsActive)
-                    count++;
-
-            // 값 갱신
-            ActivatedGenerators = count;
-
             int lit = 0;
             foreach (Campfire campfire in campfires)
                 if (campfire != null && campfire.IsLit)
@@ -362,13 +336,12 @@ namespace Squad
         }
 
         /// <summary>
-        /// 라운드가 끝나거나 게임이 종료될 때, 현재 존재하는 출구와 발전기들을 제거한다.
-        /// 매니저는 Stage의 존재와 관계없이 발전기와 출구를 관리하므로
+        /// 라운드가 끝나거나 게임이 종료될 때, 등록해 둔 출구와 모닥불을 비운다.
+        /// 매니저는 Stage의 존재와 관계없이 모닥불과 출구를 관리하므로
         /// Stage가 제거될 때도 이 메서드를 호출해야 한다.
         /// </summary>
-        private void ClearExitAndGenerators()
+        private void ClearExitAndCampfires()
         {
-            generators.Clear();
             campfires.Clear();
             _placedCampfires = -1;
             _exit = null;

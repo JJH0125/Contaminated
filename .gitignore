@@ -78,3 +78,6 @@
 
 # 빌드 결과물
 /Builds
+# 오염 텍스처 원본 (5개 384MB). 게임은 Resources/Textures/Contamination의 줄인 사본을 쓴다
+/Assets/ThirdParty/ContaminatedTexture/*.zip
+/Assets/ThirdParty/ContaminatedTexture/*.zip.meta

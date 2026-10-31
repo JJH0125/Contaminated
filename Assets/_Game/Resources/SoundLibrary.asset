@@ -26,13 +26,6 @@ MonoBehaviour:
     alert: 1
     canCrossDimension: 0
     clip: {fileID: 0}
-  generator:
-    name: Generator
-    radius: 45
-    duration: 6
-    alert: 2
-    canCrossDimension: 1
-    clip: {fileID: 0}
   decoy:
     name: Decoy
     radius: 30

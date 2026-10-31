@@ -6,7 +6,7 @@ namespace Squad
     /// <summary>
     /// 모닥불. 라운드가 시작될 때는 모두 꺼져 있고, 정해 둔 수만큼 켜야 출구가 열린다.
     ///
-    ///   꺼져 있을 때  Real에서만 막히는 덤불 고리 안에 있어 Real에서는 다가갈 수 없다. 연기만 피어올라 자리를 알려 준다.
+    ///   꺼져 있을 때  Real에서만 막히는 덤불 고리 안에 있어 Real에서는 다가갈 수 없다. 주황 불씨가 남아 있고, 연기가 피어올라 자리를 알려 준다.
     ///                 Fake에서는 고리가 없으므로 들어가서 켤 수 있다 (E를 누르고 있기, CampfireLighter)
     ///                 Fake에서만 보이는 뿌리가 이 불에서 출구까지, 그리고 이 불이 여는 관문까지 이어져 있다
     ///   켜질 때      덤불 고리와, 이 불과 이어진 관문의 덤불이 타서 열리고, 뿌리도 타서 사라진다.
@@ -33,6 +33,9 @@ namespace Squad
         private FireSource _fire;
         private GameObject _flames;
         private ParticleSystem _smoke;
+        // 꺼진 불에 남은 불씨. 켜지면 불꽃이 대신한다. (FireSource와 달리 플레이어를 드러내지 않는다)
+        private Light _ember;
+        private ParticleSystem _emberSparks;
         private DimensionObstacle _ring;
         // 이 불을 켜면 열리는 관문 (Real에서만 막힌 덤불)
         private readonly List<DimensionObstacle> _gates = new();
@@ -62,6 +65,7 @@ namespace Squad
             Transform flames = transform.Find(FlamesName);
             _flames = flames != null ? flames.gameObject : null;
             _smoke = CreateSmoke();
+            CreateEmber();
         }
 
         private void OnEnable() => _all.Add(this);
@@ -112,6 +116,15 @@ namespace Squad
                 _fire.enabled = lit;
             if (_flames != null)
                 _flames.SetActive(lit);
+            if (_ember != null)
+                _ember.enabled = !lit;
+            if (_emberSparks != null)
+            {
+                if (lit)
+                    _emberSparks.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                else
+                    _emberSparks.Play();
+            }
             if (_smoke != null)
             {
                 if (lit)
@@ -119,6 +132,50 @@ namespace Squad
                 else
                     _smoke.Play();
             }
+        }
+
+        // 꺼진 불에 남은 주황 불씨: 약한 빛과, 낮게 떠오르는 작은 불티. 재질은 연기처럼 불꽃의 것을 빌려 쓴다.
+        private void CreateEmber()
+        {
+            MapTuning tuning = GameTuning.Instance.map;
+            var lightObject = new GameObject("Ember Light");
+            lightObject.transform.SetParent(transform, false);
+            lightObject.transform.position = transform.position + Vector3.up * 0.6f;
+            _ember = lightObject.AddComponent<Light>();
+            _ember.type = LightType.Point;
+            _ember.color = tuning.emberColor;
+            _ember.intensity = tuning.emberIntensity;
+            _ember.range = tuning.emberRange;
+
+            ParticleSystemRenderer flameRenderer = _flames != null ? _flames.GetComponentInChildren<ParticleSystemRenderer>(true) : null;
+            if (flameRenderer == null || flameRenderer.sharedMaterial == null)
+                return;
+
+            var sparkObject = new GameObject("Ember Sparks");
+            sparkObject.transform.SetParent(transform, false);
+            sparkObject.transform.position = transform.position + Vector3.up * 0.3f;
+            sparkObject.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+
+            _emberSparks = sparkObject.AddComponent<ParticleSystem>();
+            _emberSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem.MainModule main = _emberSparks.main;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 0.9f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.2f, 0.45f);
+            main.startColor = tuning.emberColor;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 30;
+            ParticleSystem.EmissionModule emission = _emberSparks.emission;
+            emission.rateOverTime = 8f;
+            ParticleSystem.ShapeModule shape = _emberSparks.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 15f;
+            shape.radius = 0.7f;
+
+            var sparkRenderer = sparkObject.GetComponent<ParticleSystemRenderer>();
+            sparkRenderer.sharedMaterial = flameRenderer.sharedMaterial;
+            sparkRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         // 꺼진 불에서 피어오르는 연기. 덤불 고리 너머 멀리서도 보이도록 높이 오른다.

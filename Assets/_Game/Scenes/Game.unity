@@ -22905,7 +22905,7 @@ GameObject:
   - component: {fileID: 413962447}
   - component: {fileID: 413962446}
   m_Layer: 5
-  m_Name: GeneratorText
+  m_Name: FireText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -65094,9 +65094,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   roundText: {fileID: 352840405}
-  generatorText: {fileID: 413962446}
+  fireText: {fileID: 413962446}
   roundFormat: "\uB77C\uC6B4\uB4DC {0} / {1}"
-  generatorFormat: "\uBC1C\uC804\uAE30 {0} / {1}"
   exitOpenMessage: "\uD0C8\uCD9C\uD558\uC138\uC694!"
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   exitOpenColor: {r: 1, g: 0.85, b: 0.3, a: 1}

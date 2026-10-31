@@ -10,7 +10,7 @@ namespace Squad
 {
     /// <summary>
     /// 문자 그리드로 적은 맵 배치를 읽어 씬에 벽을 만들고,
-    /// Stage 프리팹 안의 플레이어/적/발전기/포탈/출구를 표시된 칸으로 옮긴다.
+    /// Stage 프리팹 안의 플레이어/적/포탈/출구를 표시된 칸으로 옮긴다.
     ///
     /// 사용법: 상단 메뉴 Tools > Build Map
     ///
@@ -38,7 +38,7 @@ namespace Squad
         /// <summary>
         /// 맵 배치. 위쪽이 북쪽(+Z, 카메라에서 먼 쪽)이다.
         ///   # 벽   . 바닥
-        ///   S 플레이어 시작   G 발전기   P 포탈   E 출구
+        ///   S 플레이어 시작   P 포탈   E 출구
         ///   R Real 적 시작    F Fake 적 시작
         ///
         /// 바깥 테두리 벽은 맵 크기에 맞춰 자동으로 세워지므로 여기에는 적지 않는다.
@@ -52,7 +52,7 @@ namespace Squad
         private static readonly string[] Layout =
         {
             ".......#...E...#.......",
-            ".G.....#.......#.......",
+            ".......#.......#.......",
             ".......#.#...#.#.......",
             "...................R...",
             ".......#.#...#.#.......",
@@ -62,7 +62,7 @@ namespace Squad
             ".......#.......#.......",
             ".......#.#...#.#.......",
             "..##...#.......#...##..",
-            "...........P.........G.",
+            "...........P...........",
             "..##...#.......#...##..",
             ".......#.#...#.#.......",
             ".......#.......#.......",
@@ -72,7 +72,7 @@ namespace Squad
             ".......#.......#.......",
             "...................F...",
             ".......#...S...#.......",
-            ".G.....#.......#.......",
+            ".......#.......#.......",
             ".......#.......#.......",
         };
 
@@ -303,7 +303,6 @@ namespace Squad
             {
                 PlacePlayer(root);
                 PlaceEnemies(root);
-                PlaceGenerators(root);
                 PlaceSingle(root.GetComponentInChildren<Exit>(true), 'E', "출구");
 
                 PrefabUtility.SaveAsPrefabAsset(root, StagePrefabPath);
@@ -369,35 +368,6 @@ namespace Squad
             t.position = new Vector3(t.position.x, bottom + halfHeight, t.position.z);
         }
 
-        /// <summary>G 칸 수에 맞춰 발전기를 복제하거나 지운 뒤 배치한다.</summary>
-        private static void PlaceGenerators(GameObject root)
-        {
-            List<Vector3> cells = FindCells('G');
-            List<Generator> generators = root.GetComponentsInChildren<Generator>(true)
-                                             .OrderBy(g => g.name).ToList();
-            if (generators.Count == 0)
-            {
-                Debug.LogWarning("[MapBuilder] Stage 프리팹에 발전기가 없어 복제할 수 없습니다.");
-                return;
-            }
-
-            Generator template = generators[0];
-            while (generators.Count < cells.Count)
-            {
-                GameObject copy = Object.Instantiate(template.gameObject, template.transform.parent);
-                copy.name = $"Generator ({generators.Count})";
-                generators.Add(copy.GetComponent<Generator>());
-            }
-            while (generators.Count > cells.Count)
-            {
-                Object.DestroyImmediate(generators[generators.Count - 1].gameObject);
-                generators.RemoveAt(generators.Count - 1);
-            }
-
-            for (int i = 0; i < cells.Count; i++)
-                MoveByBounds(generators[i].transform, cells[i]);
-        }
-
         private static void PlaceSingle(Component target, char symbol, string label)
         {
             List<Vector3> cells = FindCells(symbol);
@@ -417,7 +387,7 @@ namespace Squad
         }
 
         /// <summary>
-        /// 피벗이 모델 중심에 있지 않은 오브젝트(발전기, 출구 모델 등)를 칸 중심으로 옮긴다. XZ만 옮긴다.
+        /// 피벗이 모델 중심에 있지 않은 오브젝트(출구 모델 등)를 칸 중심으로 옮긴다. XZ만 옮긴다.
         ///
         /// 상호작용 범위(트리거 BoxCollider)가 있으면 그 중심을 칸 중심에 맞춘다.
         /// 플레이어가 실제로 닿아야 하는 곳이 트리거이기 때문이다.

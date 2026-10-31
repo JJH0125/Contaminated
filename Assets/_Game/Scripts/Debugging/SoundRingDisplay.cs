@@ -33,7 +33,7 @@ namespace Squad
         [Header("○ 색")]
         [Tooltip("차원을 넘지 않는 소리 (발소리 등)")]
         [SerializeField] private Color normalColor = new Color(0.34f, 0.77f, 0.86f);   // 청록
-        [Tooltip("차원을 넘는 소리 (발전기 등)")]
+        [Tooltip("차원을 넘는 소리 (모닥불에 불붙는 소리 등)")]
         [SerializeField] private Color crossColor = new Color(0.91f, 0.64f, 0.24f);    // 주황
 
         [Header("○ 바닥 찾기")]

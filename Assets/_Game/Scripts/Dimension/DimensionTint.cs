@@ -3,13 +3,13 @@ using UnityEngine;
 namespace Squad
 {
     /// <summary>
-    /// 두 차원에 모두 있는 것이 차원마다 다른 색으로 보이게 한다. 랜드마크가 Fake에서 그을린 모습이 되는 데 쓴다.
-    /// 자리와 모양은 그대로 두고 색만 바꾸므로, Fake에서 8초 뒤 Real로 튕겨 나와도 같은 자리의 랜드마크로 길을 잃지 않는다.
+    /// 두 차원에 모두 있는 것이 차원마다 다른 색으로 보이게 한다. 엄폐 바위가 Fake에서 그을린 모습이 되는 데 쓴다.
+    /// 자리와 모양은 그대로 두고 색만 바꾼다.
     ///
     /// 재질은 바꾸지 않고 Renderer마다 색(_Color)만 따로 넣는다(MaterialPropertyBlock).
     ///
     /// 씬 구성:
-    ///   붙일 필요가 없다. StageLayout이 랜드마크를 만들 때 붙인다.
+    ///   붙일 필요가 없다. CoverRockBuilder가 바위를 만들 때 붙인다.
     /// </summary>
     public class DimensionTint : MonoBehaviour
     {

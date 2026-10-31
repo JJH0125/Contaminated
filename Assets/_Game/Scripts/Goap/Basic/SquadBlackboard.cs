@@ -79,8 +79,8 @@ namespace Squad
         // HasSound is true while there's an un-investigated sound to check out.
         // LastSoundPosition is where it came from. A chaser walks there (MoveToSound),
         // searches (SearchSoundArea), then calls ClearSound() so it isn't chased
-        // forever. Generator sounds and footsteps both land here; the difference
-        // (footsteps stay in one dimension, generator sound crosses) is enforced
+        // forever. Fire-lighting sounds and footsteps both land here; the difference
+        // (footsteps stay in one dimension, the fire-lighting sound crosses) is enforced
         // by WHO calls ReportSound — see the detection system, not here.
 
         // **** 소리에 대한 정보 ****
@@ -327,11 +327,11 @@ namespace Squad
         public bool IsSeeingPlayerNow(DimensionMember enemy) => _seeingEnemies.Contains(enemy);
 
         /// <summary>
-        /// Report a heard sound (footstep, generator, etc.) — softer than a
+        /// Report a heard sound (footstep, campfire being lit, etc.) — softer than a
         /// sighting. Sets HasSound so an idle chaser will pick up the
         /// InvestigateSound goal and walk over to check it out.
         /// The caller (detection system) decides whether a given chaser can hear
-        /// this sound at all — e.g. a generator sound is reported to chasers in
+        /// this sound at all — e.g. a fire-lighting sound is reported to chasers in
         /// both dimensions, a footstep only to chasers in the player's dimension.
         /// </summary>
         
@@ -350,7 +350,7 @@ namespace Squad
             SoundDimension = dimension;
             SoundCanCrossDimension = sound.CanCrossDimension;
 
-            /// 벽 너머의 플레이어가 내는 소리, 발전기 소리 등등
+            /// 벽 너머의 플레이어가 내는 소리, 모닥불에 불붙는 소리 등등
             /// 소리는 들리지만 플레이어가 보이지 않는 상황일 때
             /// 적은 플레이어가 방금까지 그곳에 있었으리라 추측한다.
             if (!PlayerCurrentlyVisible)

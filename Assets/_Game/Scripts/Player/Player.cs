@@ -108,7 +108,16 @@ public class Player : MonoBehaviour
     /// 4. 애니메이션을 상황에 맞게 적절히 적용한다
     void Move()
     {
-        horizontal = (cameraRight * X_Axis + cameraForward * Z_Axis).normalized;
+        // 디버그용 1인칭(F3)에서는 바라보는 방향이 앞이다.
+        if (Squad.FirstPersonDebug.On)
+        {
+            Quaternion body = Squad.FirstPersonDebug.BodyRotation;
+            horizontal = (body * Vector3.right * X_Axis + body * Vector3.forward * Z_Axis).normalized;
+        }
+        else
+        {
+            horizontal = (cameraRight * X_Axis + cameraForward * Z_Axis).normalized;
+        }
         horizontal *= isWalk ? walkSpeed : moveSpeed;
         if (MovementLocked)
             horizontal = Vector3.zero;
@@ -146,6 +155,13 @@ public class Player : MonoBehaviour
 
     void Turn()
     {
+        // 디버그용 1인칭(F3)에서는 몸이 늘 바라보는 방향을 본다.
+        if (Squad.FirstPersonDebug.On && !MovementLocked)
+        {
+            transform.rotation = Squad.FirstPersonDebug.BodyRotation;
+            return;
+        }
+
         // 입력이 없으면 회전하지 않음 (horizontal이 아니라 입력을 직접 확인)
         if (MovementLocked || (X_Axis == 0f && Z_Axis == 0f))
             return;

@@ -477,8 +477,20 @@ namespace Squad
     public class MapTuning
     {
         [Header("구역")]
-        [Tooltip("닫힌 구역을 막는 덤불 벽의 두께(m)")]
+        [Tooltip("구역 벽의 두께(m). 보이지 않는 상자가 이 두께로 몸과 길을 막는다")]
         public float zoneWallThickness = 4f;
+        [Tooltip("구역 벽의 큰 나무 간격(m). 좁을수록 벽처럼 빽빽해 보이고, 넓을수록 줄기 사이로 건너편이 잘 보인다")]
+        public float treeWallSpacing = 3f;
+        [Tooltip("구역 벽 나무의 굵기 배율. 키는 그대로 두고 옆으로만 키운다. 줄기와 잎이 한 모델이라 잎도 함께 넓어진다")]
+        public float treeWallGirth = 1.4f;
+        [Tooltip("구역 벽 둘레에서 원래 숲의 나무와 풀을 치우는 거리(m). 벽 주변이 잎으로 뒤덮이지 않게 한다. 0이면 치우지 않는다")]
+        public float wallPropClearance = 6f;
+        [Tooltip("적의 시선도 구역 벽에 막히는가. 끄면 플레이어와 적이 벽 너머로 서로 볼 수 있다 (지나갈 수는 없다)")]
+        public bool zoneWallBlocksSight = false;
+        [Tooltip("구역 벽 나무의 크기 배율 (최소)")]
+        public float treeWallScaleMin = 1.3f;
+        [Tooltip("구역 벽 나무의 크기 배율 (최대)")]
+        public float treeWallScaleMax = 1.6f;
 
         [Header("관문 (열린 두 구역 사이의 벽에 뚫린 틈)")]
         [Tooltip("관문의 너비(m)")]
@@ -490,8 +502,10 @@ namespace Squad
         public float sealedGateDistance = 30f;
         [Tooltip("관문 둘레에서 모닥불 고리, 웅덩이, 적을 놓지 않고 비워 두는 거리(m). 길목이 막히지 않게 한다")]
         public float gateClearance = 8f;
-        [Tooltip("Real에서만 막힌 관문 덤불의 색. 모닥불 고리처럼 불로 걷히는 덤불이라 같은 색으로 둔다")]
-        public Color sealedGateTint = new Color(0.7f, 0.65f, 0.55f);
+        [Tooltip("봉인된 관문의 덤불 간격(m). 빽빽하게 엉겨 있어야 구역 벽의 나무 줄과 구분된다")]
+        public float sealedGateBushSpacing = 1.8f;
+        [Tooltip("봉인된 관문의 덤불 줄 수")]
+        [Range(1, 3)] public int sealedGateBushRows = 2;
 
         [Header("봉인된 모닥불 (Real에서만 막히는 덤불 고리)")]
         [Tooltip("모닥불을 둘러싼 덤불 고리의 반지름(m). Fake로 들어가 8초 안에 불까지 가서 켤 수 있어야 하므로 " +
@@ -516,12 +530,16 @@ namespace Squad
         public float bushScaleMax = 1.6f;
         [Tooltip("덤불을 몇 줄로 늘어놓는가. 1이면 한 줄. 늘리면 벽이 두꺼워 보이지만 그만큼 많아진다")]
         [Range(1, 3)] public int bushRows = 1;
-        [Tooltip("구역 벽에 큰 나무도 섞을지. 섞으면 벽이 높아 보이지만, 큰 잎이 플레이어를 가리기 쉽다")]
-        public bool zoneWallTrees = false;
-        [Tooltip("닫힌 구역 벽 덤불의 색. 불로도 걷히지 않는 덤불이라 어둡고 거칠게 보이게 한다")]
-        public Color zoneWallTint = new Color(0.35f, 0.3f, 0.35f);
-        [Tooltip("모닥불 고리 덤불의 색")]
-        public Color ringTint = new Color(0.7f, 0.65f, 0.55f);
+        [Tooltip("구역 벽 나무와 밑동 덤불의 색. 숲보다 조금 어둡게 둔다")]
+        public Color zoneWallTint = new Color(0.55f, 0.5f, 0.55f);
+
+        [Header("오염 덤불 (봉인된 관문과 모닥불 고리. 불로 걷히는 덤불)")]
+        [Tooltip("오염 텍스처가 덤불을 덮는 정도. 0이면 원래 숲의 덤불과 같다")]
+        [Range(0f, 1f)] public float bushGrimeAmount = 0.85f;
+        [Tooltip("오염 텍스처 한 장이 덮는 크기(m). 작으면 촘촘해서 노이즈처럼 보이고, 크면 밋밋하다")]
+        public float grimeSize = 5f;
+        [Tooltip("오염 덤불의 색. 텍스처 위에 곱해진다. 어두울수록 검게 엉겨 보인다")]
+        public Color contaminatedBushTint = new Color(0.22f, 0.2f, 0.22f);
 
         [Header("오염 웅덩이 (Fake에서만 막힘)")]
         [Tooltip("웅덩이 반지름(m, 최소)")]
@@ -543,13 +561,53 @@ namespace Squad
         [Tooltip("뿌리가 좌우로 구불거리는 정도(m)")]
         public float rootWiggle = 1.2f;
 
-        [Header("랜드마크 (모든 라운드에 같은 자리. Fake에서는 그을리고 덩굴이 감긴 모습)")]
-        [Tooltip("봉우리 꼭대기와 각 구역의 랜드마크 선돌 크기 배율")]
-        public float landmarkScale = 1f;
-        [Tooltip("Fake에서 랜드마크가 그을린 색")]
-        public Color landmarkCharred = new Color(0.16f, 0.13f, 0.13f);
-        [Tooltip("Fake에서 랜드마크에 감긴 덩굴의 색")]
-        public Color landmarkVineColor = new Color(0.04f, 0.03f, 0.04f);
+        [Header("출구 덤불 아치 (모닥불을 켤 때마다 타고, 다 켜면 열린다)")]
+        [Tooltip("아치 앞면의 절반 너비(m). 출구의 판정 범위보다 넓어야 돌아갈 수 없다")]
+        public float exitArchHalfWidth = 18f;
+        [Tooltip("출구 자리에서 아치 앞면까지의 거리(m). 지형 한가운데 쪽으로 잰다")]
+        public float exitArchOffset = 4f;
+        [Tooltip("아치 양옆의 나무 벽이 출구 뒤로 뻗는 거리(m). 맵 가장자리에 닿아야 한다")]
+        public float exitArchDepth = 20f;
+        [Tooltip("아치 덤불의 간격(m). 봉인된 관문보다 빽빽하게 둔다")]
+        public float exitArchBushSpacing = 1.2f;
+        [Tooltip("아치 덤불의 줄 수")]
+        [Range(1, 3)] public int exitArchBushRows = 2;
+        [Tooltip("아치 가운데 덤불이 양끝보다 몇 배 큰가. 클수록 아치처럼 솟아 보인다")]
+        public float exitArchPeak = 1.8f;
+        [Tooltip("틈새로 새어 나오는 빛의 색")]
+        public Color exitGlowColor = new Color(1f, 0.72f, 0.4f);
+        [Tooltip("빛이 닿는 거리(m)")]
+        public float exitGlowRange = 30f;
+        [Tooltip("아무 불도 켜지 않았을 때의 빛 밝기")]
+        public float exitGlowMin = 0.5f;
+        [Tooltip("불을 다 켰을 때의 빛 밝기")]
+        public float exitGlowMax = 3f;
+
+        [Header("꺼진 모닥불의 불씨")]
+        [Tooltip("불씨 빛의 색")]
+        public Color emberColor = new Color(1f, 0.4f, 0.1f);
+        [Tooltip("불씨 빛의 밝기")]
+        public float emberIntensity = 1.2f;
+        [Tooltip("불씨 빛이 닿는 거리(m)")]
+        public float emberRange = 5f;
+
+        [Header("엄폐 바위 (적의 시선을 가리는 작은 바위 무리)")]
+        [Tooltip("관문 하나의 둘레에 놓을 바위 무리의 수")]
+        public int coverRocksPerGate = 2;
+        [Tooltip("모닥불 고리 하나의 바깥에 놓을 바위 무리의 수")]
+        public int coverRocksPerCampfire = 1;
+        [Tooltip("바위의 너비(m, 최소)")]
+        public float rockWidthMin = 3f;
+        [Tooltip("바위의 너비(m, 최대)")]
+        public float rockWidthMax = 4.5f;
+        [Tooltip("바위의 높이(m, 최소). 적의 눈이 높으므로 플레이어 키만큼은 되어야 시선을 가린다")]
+        public float rockHeightMin = 5f;
+        [Tooltip("바위의 높이(m, 최대)")]
+        public float rockHeightMax = 7f;
+        [Tooltip("이끼 낀 바위 텍스처가 덮는 정도")]
+        [Range(0f, 1f)] public float rockGrimeAmount = 0.7f;
+        [Tooltip("Fake에서 바위가 그을린 색")]
+        public Color rockCharred = new Color(0.2f, 0.17f, 0.17f);
 
         [Header("차원 이동 위치 보정")]
         [Tooltip("넘어간 자리가 그 차원에서 막혀 있으면, 이 거리(m) 안의 가장 가까운 열린 자리로 옮긴다")]

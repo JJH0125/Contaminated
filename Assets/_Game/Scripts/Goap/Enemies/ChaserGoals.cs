@@ -8,7 +8,7 @@ namespace Squad
     ///   1. CatchPlayer      — highest priority. Fires when the player is
     ///                          detected (seen, or a fresh last-known position).
     ///   2. InvestigateSound — middle priority. Fires when a sound (e.g. a
-    ///                          generator being switched on) has been reported
+    ///                          campfire being lit) has been reported
     ///                          but the player isn't currently detected. The
     ///                          chaser goes to the SOUND'S location to check it
     ///                          out (interpretation A).

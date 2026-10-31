@@ -10,14 +10,16 @@ namespace Squad
     ///
     /// 배치 순서 (뒤의 것이 앞의 것을 피해야 하므로 이 순서를 지킨다):
     ///   1. 출구와 플레이어  항상 같은 자리 (출구는 남쪽, 플레이어는 그 앞)
-    ///      랜드마크        항상 같은 자리, 같은 모양 (봉우리 꼭대기와 구역마다 하나. LandmarkBuilder)
-    ///   2. 구역            봉우리 둘레 4구역 중 열린 구역만 쓴다. 네 경계 모두에 두꺼운 덤불 벽을 세운다 (ZoneMap)
+    ///      출구 덤불 아치   출구 앞을 오염 덤불로 막고, 양옆을 나무 벽으로 맵 가장자리까지 막는다 (ExitArch)
+    ///   2. 구역            봉우리 둘레 4구역 중 열린 구역만 쓴다. 네 경계 모두에 큰 나무 줄로 벽을 세운다 (ZoneMap)
     ///                      닫힌 구역과의 벽은 틈이 없고, 닫힌 구역의 칸은 두 차원 모두에서 막는다
     ///                      열린 구역끼리의 벽에는 관문을 뚫는다: 바깥쪽의 열린 관문과, 봉우리 비탈의 봉인된 관문(Real에서만 막힘)
+    ///                      관문 둘레에는 숨을 곳이 되는 엄폐 바위를 놓는다 (CoverRockBuilder)
     ///   3. 봉인된 모닥불    열린 구역에 서로 떨어뜨려 놓는다. 모두 꺼진 채, Real에서만 막히는 덤불 고리 안에 있다
     ///                      고리는 한 구역 안에 들어가야 하고(벽에 걸치지 않게), 관문 앞을 막지 않아야 한다
+    ///                      고리 바깥에도 엄폐 바위를 놓는다
     ///   4. 오염 웅덩이      Fake에서만 막는다. 절반은 모닥불 고리 바깥 가까이에 두어 Fake로 들어가는 길을 고르게 한다
-    ///   5. 뿌리            Fake에서만 보인다. 꺼진 모닥불마다 Fake의 길을 따라 출구까지 뻗는다
+    ///   5. 뿌리            Fake에서만 보인다. 꺼진 모닥불마다 Fake의 길을 따라 출구 아치까지 뻗는다
     ///      관문 잇기        봉인된 관문마다 가장 가까운 모닥불과 잇고, 그 불에서 관문까지도 뿌리를 뻗는다.
     ///                      그 불을 켜면 관문이 타서 열려 봉우리 비탈의 지름길이 생긴다
     ///   6. 적              열린 구역에서, 플레이어와 떨어진 곳. 고리 안이나 웅덩이 위에는 놓지 않는다
@@ -95,6 +97,8 @@ namespace Squad
         private float _halfExtent;
         private Vector3 _exitSpot;
         private Vector3 _playerSpot;
+        // 뿌리가 모이는 자리: 출구 아치 바로 앞
+        private Vector3 _rootEnd;
         // 이미 오브젝트를 놓은 자리들
         private readonly List<Vector3> _placed = new();
         // 다른 것을 놓으면 안 되는 원: 덤불 고리 안쪽과 웅덩이 (x, z, 반지름)
@@ -125,9 +129,11 @@ namespace Squad
 
             RoundAtmosphere.Apply(_round);
             _playerSpot = PlaceExitAndPlayer();
-            PlaceLandmarks();
+            BuildExitArch();
             BuildZones();
+            PlaceGateCover();
             List<Campfire> campfires = PlaceCampfires();
+            PlaceCampfireCover();
             PlacePools();
             BuildRoots(campfires);
             LinkGates(campfires);
@@ -191,22 +197,98 @@ namespace Squad
             return playerSpot;
         }
 
-        // ── 랜드마크 ─────────────────────────────────────────────────
+        // ── 출구 아치 ────────────────────────────────────────────────
 
-        // 랜드마크를 세우고, 그 둘레의 나무를 치우고, 다른 것이 겹쳐 놓이지 않게 비워 둔다.
-        private void PlaceLandmarks()
+        // 출구 앞에 덤불 아치를, 양옆에 맵 가장자리까지 나무 벽을 세운다. 뿌리는 아치 앞으로 모인다.
+        private void BuildExitArch()
         {
-            List<Vector3> spots = LandmarkBuilder.BuildAll(transform, _center, stoneModels);
-            float radius = LandmarkBuilder.FootprintRadius * Map.landmarkScale;
-            foreach (Vector3 spot in spots)
-                _keepOut.Add(new Vector3(spot.x, spot.z, radius));
-            ClearPropsAround(spots, radius);
+            Vector3 toCenter = _center - _exitSpot;
+            toCenter.y = 0f;
+            Vector3 inward = toCenter.sqrMagnitude > 0.0001f ? toCenter.normalized : Vector3.forward;
+            Vector3 right = Vector3.Cross(Vector3.up, inward);
+
+            Vector3 frontCenter = _exitSpot + inward * Map.exitArchOffset;
+            Vector3 left = frontCenter - right * Map.exitArchHalfWidth;
+            Vector3 rightEnd = frontCenter + right * Map.exitArchHalfWidth;
+            Vector3 back = -inward * (Map.exitArchOffset + Map.exitArchDepth);
+
+            ExitArch.Build(transform, left, rightEnd, _exitSpot, "모닥불을 켜면 검은 덤불이 탄다...");
+            BarrierBuilder.BuildTreeWall(transform, "Exit Side Wall", left, left + back);
+            BarrierBuilder.BuildTreeWall(transform, "Exit Side Wall", rightEnd, rightEnd + back);
+
+            _rootEnd = frontCenter + inward * (Map.zoneWallThickness + 1f);
+
+            // 울타리 안팎에 다른 것이 놓이지 않게 비워 두고, 벽과 겹치는 숲을 치운다.
+            float radius = Map.exitArchHalfWidth + Map.exitArchOffset + 2f;
+            _keepOut.Add(new Vector3(_exitSpot.x, _exitSpot.z, radius));
+            ClearPropsAround(new List<Vector3> { _exitSpot }, radius);
+        }
+
+        // ── 엄폐 바위 ────────────────────────────────────────────────
+
+        // 관문 둘레에 바위 무리를 놓는다. 길목을 막지 않도록 관문 양옆, 벽에서 조금 떨어진 자리에 둔다.
+        private void PlaceGateCover()
+        {
+            float half = Map.gateWidth * 0.5f;
+            foreach (Vector3 gate in _gateSpots)
+            {
+                Vector3 toCenter = _center - gate;
+                toCenter.y = 0f;
+                Vector3 along = toCenter.sqrMagnitude > 0.001f ? toCenter.normalized : Vector3.forward;
+                Vector3 across = Vector3.Cross(Vector3.up, along);
+
+                for (int n = 0; n < Map.coverRocksPerGate; n++)
+                {
+                    // 관문의 앞뒤(구역 안쪽)로 번갈아, 벽을 따라서는 양쪽으로 번갈아 놓는다.
+                    float acrossSide = n % 2 == 0 ? 1f : -1f;
+                    float alongSide = n / 2 % 2 == 0 ? 1f : -1f;
+                    for (int i = 0; i < 12; i++)
+                    {
+                        Vector3 spot = gate + along * (alongSide * (half + 3f))
+                                            + across * (acrossSide * Random.Range(CoverRockBuilder.FootprintRadius + 2f, 12f));
+                        if (!IsOpenGround(spot))
+                            continue;
+
+                        PlaceCoverRocks(spot);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 모닥불 고리 바로 바깥에 바위 무리를 놓는다.
+        private void PlaceCampfireCover()
+        {
+            float ringOuter = Map.ringRadius + Map.ringThickness;
+            foreach (Vector3 fire in _campfireSpots)
+            {
+                for (int n = 0; n < Map.coverRocksPerCampfire; n++)
+                {
+                    for (int i = 0; i < 12; i++)
+                    {
+                        float distance = ringOuter + CoverRockBuilder.FootprintRadius + Random.Range(1f, 8f);
+                        Vector3 spot = fire + ZoneMap.Direction(Random.Range(0f, 360f)) * distance;
+                        if (!IsUsable(spot, CoverRockBuilder.FootprintRadius))
+                            continue;
+
+                        PlaceCoverRocks(spot);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void PlaceCoverRocks(Vector3 spot)
+        {
+            CoverRockBuilder.Build(transform, spot, stoneModels);
+            _keepOut.Add(new Vector3(spot.x, spot.z, CoverRockBuilder.FootprintRadius));
+            ClearPropsAround(new List<Vector3> { spot }, CoverRockBuilder.FootprintRadius);
         }
 
         // ── 구역 ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// 네 경계 모두에 두꺼운 덤불 벽을 세운다. 벽은 봉우리 꼭대기에서 지형의 모서리를 넘어서까지 뻗는다.
+        /// 네 경계 모두에 큰 나무 줄로 벽을 세운다. 벽은 봉우리 꼭대기에서 지형의 모서리를 넘어서까지 뻗는다.
         /// (가장자리의 경계 벽과 빈틈없이 만나도록)
         ///   열린 구역 | 닫힌 구역  틈 없는 벽. 닫힌 구역의 칸은 두 차원 모두에서 막는다
         ///   열린 구역 | 열린 구역  관문이 뚫린 벽. 다른 구역으로 가려면 관문을 지나야 한다
@@ -231,13 +313,28 @@ namespace Squad
 
                 if (a >= open || b >= open)
                 {
-                    BarrierBuilder.BuildWall(transform, name, _center, _center + direction * reach,
-                                             Dimension.None, Map.zoneWallTint, Map.zoneWallTrees);
+                    BarrierBuilder.BuildTreeWall(transform, name, _center, _center + direction * reach);
                     continue;
                 }
 
                 BuildGatedWall(name, direction, reach);
             }
+
+            ClearPropsAlongWalls(reach);
+        }
+
+        // 네 벽을 따라 원래 숲의 나무와 풀을 치운다. 벽의 나무와 겹쳐 잎이 뒤덮이지 않게 한다.
+        private void ClearPropsAlongWalls(float reach)
+        {
+            float radius = Map.wallPropClearance;
+            if (radius <= 0f)
+                return;
+
+            var spots = new List<Vector3>();
+            foreach ((float angle, int _, int _) in ZoneMap.Boundaries)
+                for (float along = 0f; along <= reach; along += Mathf.Max(radius * 0.5f, 1f))
+                    spots.Add(_center + ZoneMap.Direction(angle) * along);
+            ClearPropsAround(spots, radius);
         }
 
         // 봉우리에서 direction 쪽으로 reach까지 뻗은 벽을, 관문 자리만 비우고 세운다.
@@ -258,25 +355,22 @@ namespace Squad
                 float start = Mathf.Clamp(distance - half, from, reach);
                 float end = Mathf.Clamp(distance + half, start, reach);
                 if (start > from)
-                    BarrierBuilder.BuildWall(transform, name, _center + direction * from, _center + direction * start,
-                                             Dimension.None, Map.zoneWallTint, Map.zoneWallTrees);
+                    BarrierBuilder.BuildTreeWall(transform, name, _center + direction * from, _center + direction * start);
 
                 Vector3 spot = _center + direction * distance;
                 _gateSpots.Add(spot);
                 _keepOut.Add(new Vector3(spot.x, spot.z, half + Map.gateClearance));
                 if (sealedGate)
                 {
-                    DimensionObstacle gate = BarrierBuilder.BuildWall(
-                        transform, name + " Sealed Gate", _center + direction * start, _center + direction * end,
-                        Dimension.Real, Map.sealedGateTint, false);
+                    DimensionObstacle gate = BarrierBuilder.BuildSealedGate(
+                        transform, name + " Sealed Gate", _center + direction * start, _center + direction * end);
                     _sealedGates.Add((gate, spot));
                 }
                 from = end;
             }
 
             if (from < reach)
-                BarrierBuilder.BuildWall(transform, name, _center + direction * from, _center + direction * reach,
-                                         Dimension.None, Map.zoneWallTint, Map.zoneWallTrees);
+                BarrierBuilder.BuildTreeWall(transform, name, _center + direction * from, _center + direction * reach);
         }
 
         /// <summary>
@@ -439,7 +533,7 @@ namespace Squad
                 for (int i = 0; i < MaxTries && !found; i++)
                 {
                     spot = RandomSpot();
-                    found = IsUsable(spot)
+                    found = IsUsable(spot, ringOuter)
                             && RingFits(spot, ringOuter + Map.zoneWallThickness, open)
                             && IsClearOfGates(spot, ringOuter)
                             && FlatDistance(spot, _playerSpot) >= ringOuter + StartClearance
@@ -460,7 +554,7 @@ namespace Squad
                 // 모닥불은 기준점이 땅에 닿는 지점이 되도록 만들어져 있으므로 띄우지 않고 그대로 땅에 놓는다.
                 PlaceOnGround(campfire.transform, spot, 0f);
                 DimensionObstacle ring = BarrierBuilder.BuildRing(
-                    transform, "Campfire Ring", spot, Map.ringRadius, Dimension.Real, Map.ringTint);
+                    transform, "Campfire Ring", spot, Map.ringRadius, Dimension.Real);
                 campfire.Seal(ring);
                 _keepOut.Add(new Vector3(spot.x, spot.z, ringOuter + 1f));
                 placed.Add(campfire);
@@ -526,7 +620,8 @@ namespace Squad
         private void BuildRoots(List<Campfire> campfires)
         {
             foreach (Campfire campfire in campfires)
-                campfire.ConnectRoot(BuildRoot(campfire.transform.position, _exitSpot));
+                campfire.ConnectRoot(BuildRoot(campfire.transform.position,
+                                               _rootEnd + ZoneMap.Direction(Random.Range(0f, 360f)) * Random.Range(0f, 4f)));
         }
 
         // from에서 to까지 Fake의 길을 따라 뿌리를 만든다. 길이 없으면 곧게 잇는다.
@@ -674,16 +769,22 @@ namespace Squad
         // 무작위 자리가 공통 조건에 맞는가. margin만큼 넉넉하게 장애물을 피한다.
         private bool IsUsable(Vector3 spot, float margin = 0f)
         {
+            foreach (Vector3 circle in _keepOut)
+                if (Vector2.Distance(new Vector2(spot.x, spot.z), new Vector2(circle.x, circle.y)) < circle.z + margin)
+                    return false;
+
+            return IsOpenGround(spot);
+        }
+
+        // 지형 안, 열린 구역, 가파르지 않은 땅, 걸을 수 있는 칸인가. (비워 둔 자리는 따지지 않는다)
+        private bool IsOpenGround(Vector3 spot)
+        {
             Vector3 fromCenter = spot - _center;
             if (Mathf.Abs(fromCenter.x) > _halfExtent || Mathf.Abs(fromCenter.z) > _halfExtent)
                 return false;
 
             if (!ZoneMap.IsOpen(spot, _center, Mathf.Clamp(_round.openZones, 1, ZoneMap.Count)))
                 return false;
-
-            foreach (Vector3 circle in _keepOut)
-                if (Vector2.Distance(new Vector2(spot.x, spot.z), new Vector2(circle.x, circle.y)) < circle.z + margin)
-                    return false;
 
             // GetSteepness는 지형의 한쪽 끝을 0, 반대쪽 끝을 1로 본 비율 좌표를 받는다.
             Vector3 size = _terrain.terrainData.size;

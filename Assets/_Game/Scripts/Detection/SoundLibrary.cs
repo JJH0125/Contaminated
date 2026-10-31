@@ -21,8 +21,6 @@ namespace Squad
         [SerializeField] private Sound walking = new Sound("Walking", 4f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("기본 이동(뛰기) 발소리")]
         [SerializeField] private Sound running = new Sound("Running", 13f, 0f, AlertLevel.Suspicious, false);
-        [Tooltip("작동 중인 발전기 소리")]
-        [SerializeField] private Sound generator = new Sound("Generator", 45f, 6f, AlertLevel.Alerted, true);
         [Tooltip("미끼 소리")]
         [SerializeField] private Sound decoy = new Sound("Decoy", 30f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("플레이어가 차원을 넘어 도착한 자리에서 나는 소리. 도착한 차원의 적만 들어야 하므로 차원을 관통하지 않게 둔다")]
@@ -32,7 +30,6 @@ namespace Squad
 
         public Sound Walking => walking;
         public Sound Running => running;
-        public Sound Generator => generator;
         public Sound Decoy => decoy;
         public Sound DimensionShift => dimensionShift;
         public Sound FireLit => fireLit;

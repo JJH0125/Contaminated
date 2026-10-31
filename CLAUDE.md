@@ -13,7 +13,7 @@
 - **장르**: 3D 쿼터뷰(약 45~60° 카메라, The Last Campfire 류) **스텔스 호러** 게임
 - **엔진/언어**: Unity / C# (에디터: VS Code)
 - **학술적 핵심 가치**: AI 시스템 (GOAP, A*, 감지). 아트가 아니라 **AI가 차별점**
-- **핵심 루프**: 플레이어가 여러 발전기를 켜며(강제 소음 = 노출) 추격자를 피하다 출구로 탈출. 추격자는 **싸울 수 없음**(순수 스텔스 회피)
+- **핵심 루프**: 플레이어가 Fake 차원을 오가며 꺼진 모닥불들을 켜고(불붙는 소리 = 노출) 추격자를 피하다 출구로 탈출. 추격자는 **싸울 수 없음**(순수 스텔스 회피)
 - **개발 철학**: 로직을 프리미티브로 먼저 완성하고 아트는 마지막. 에셋은 Asset Store/Mixamo/무료 활용 권장
 
 ### 차원 메커니즘 (핵심 차별화)
@@ -21,7 +21,7 @@
 - **각 적은 한 차원에만** 존재. **적은 차원 이동을 이해 못 함**(플레이어가 "사라진" 것으로 인식)
 - 차원 이동이 완벽한 도주가 되지 않도록:
   - 경계 수준이 서서히 감쇠(Alerted→Suspicious→Calm)해서 돌아오는 게 위험
-  - **발전기 소리는 차원 관통**, **발소리는 차원 내에서만** — 누가 ReportSound를 받는지로 제어(블랙보드가 아니라 감지 시스템이 결정)
+  - **불붙는 소리는 차원 관통**, **발소리는 차원 내에서만** — 누가 ReportSound를 받는지로 제어(블랙보드가 아니라 감지 시스템이 결정)
 - 이 조합(쿼터뷰 호러 + 능동적 차원 이동 + GOAP 다중 추격자 + 차원별 소리 규칙)은 **웹 검색으로 신규성 확인됨**
 
 ---
@@ -90,7 +90,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 | `Detection/` | `VisionCensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
 | `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), Fake 차원 화면 효과들 |
 | `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 등 |
-| `Objects/` | `Campfire`, `Torch`, `FireSource`, `Stone`(미끼 돌), `Exit`, `Generator` |
+| `Objects/` | `Campfire`, `Torch`, `FireSource`, `Stone`(미끼 돌), `Exit` |
 | `Player/` | 이동, 카메라(`Follow`), 횃불·돌 들기, 숨소리, 발소리, 보호복 오염 |
 | `Audio/`, `UI/`, `Debugging/`, `Editor/`, `Astar/` | 이름 그대로 |
 
@@ -130,7 +130,6 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - 소리 정보(`HasSound` 등)는 여전히 블랙보드에 하나라, 소리를 **듣지 못한** 같은 차원 적도 (느린 속도로) 조사하러 감
 - 적 시야 레이캐스트가 지형을 장애물로 보는지 확인 필요 (`obstacleLayer`에 지형 레이어가 없으면 봉우리 너머가 보임)
 - 차원 이동 도착 소리가 감지 유예 중에도 바로 적에게 전달됨
-- `Generator.cs`가 아직 Stage 프리팹에서 쓰이고 있음 (발전기를 없앤 설계라면 정리 대상인지 확인)
 - 블랙보드의 `TryClaimRole`/`ReleaseRole`은 다중 추격자 데모 삭제 후 쓰는 곳이 없음
 - 2장(코드 구조)·`HorrorChaserAgent`/`ChaserGoals`의 영어 주석은 "세 목표" 시절 설명 그대로
 
@@ -159,4 +158,4 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 3. **놓친 자리 수색**: 직접 보던 적이 플레이어를 놓쳤을 때도 수색 지도를 쓰게 하면, 횃불·돌·차원 이동으로 추격이 순식간에 끝나는 문제가 줄어듦
 4. **차원 이동 도착 소리 조정**: 유예를 2초로 늘리고, 소리를 유예가 끝날 때 내는 안
 5. **차원별 벽**: 차원별 레이어·충돌, 오브젝트 보이기/숨기기, 차원별 길찾기 격자 (지형 분리는 그 뒤)
-6. **문서·코드 정리**: 2장 갱신, 오래된 영어 주석, `TryClaimRole`/`ReleaseRole`, `Generator` 정리 여부
+6. **문서·코드 정리**: 2장 갱신, 오래된 영어 주석, `TryClaimRole`/`ReleaseRole` 정리 여부

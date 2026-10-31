@@ -1,0 +1,8 @@
+오염 표면 텍스처 원본 (4K, Blender 묶음)
+파일 이름 형식으로 보아 Poly Haven(polyhaven.com) 에셋으로 보인다. 받은 곳과 라이선스를 확인해 적어 둘 것.
+  moss_wood, mossy_rock, mossy_cobblestone, concrete_moss, brown_mud_leaves_01
+
+zip은 용량이 커서(5개 384MB) Git에 올리지 않는다.
+게임에서 쓰는 것은 색 맵을 1024로 줄인 사본이다: Assets/_Game/Resources/Textures/Contamination
+  moss_wood   오염 덤불 (봉인된 관문, 모닥불 고리)
+  mossy_rock  엄폐 바위

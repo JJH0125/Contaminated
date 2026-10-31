@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// Real 차원, Fake 차원이 존재하며
-/// 발전기가 소리를 전달할 때 쓸 None 값이 따로 존재한다
+/// 두 차원 모두에 있는 것(구역 벽 등)과 차원을 넘는 소리에 쓸 None 값이 따로 존재한다
 public enum Dimension { None, Real, Fake }
 
 namespace Squad
