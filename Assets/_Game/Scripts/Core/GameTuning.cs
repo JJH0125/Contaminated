@@ -62,9 +62,13 @@ namespace Squad
         public DimensionTuning dimension = new();
 
         [Tooltip("Real 차원 적의 판단, 이동, 경계, 시야. Real 적은 무리 지어 순찰한다")]
-        public EnemyTuning realEnemy = new() { roarRadius = 40f, packSize = 3, fireAttraction = 0f };
+        public EnemyTuning realEnemy = new() { roarRadius = 40f, packSize = 3, fireAttraction = 0f, eyeHeight = 5.5f };
         [Tooltip("Fake 차원 적의 판단, 이동, 경계, 시야. Fake 적은 각자 다니다가 켜진 불로 몰려간다")]
-        public EnemyTuning fakeEnemy = new() { roarRadius = 40f, packSize = 1, fireAttraction = 0.7f };
+        public EnemyTuning fakeEnemy = new()
+        {
+            roarRadius = 40f, packSize = 1, fireAttraction = 0.7f, canRoar = false,
+            seesOnlyTorch = true, viewDistance = 15f, litViewMultiplierLastRound = 1f, hearingMultiplier = 1.75f,
+        };
         [Tooltip("적 모델에 맞춘 값: 걷는 애니메이션, 잡힐 때의 연출")]
         public EnemyBodyTuning enemyBody = new();
         [Tooltip("발견 신호를 받은 적들이 나눠 맡는 수색 지점")]
@@ -79,6 +83,8 @@ namespace Squad
         public FakeScreenTuning fakeScreen = new();
         [Tooltip("Fake 차원에 들어갈 때 퍼지는 오염과, 맵 곳곳에 드러나는 오염의 흔적")]
         public FakeContaminationTuning fakeContamination = new();
+        [Tooltip("Fake 적의 모습: 검은 형체와, 횃불 빛이 닿으면 드러나는 결정 무늬")]
+        public AshEnemyTuning ashEnemy = new();
         [Tooltip("횃불을 숨기는 동안 화면 가장자리에 끼는 김서림과 오염")]
         public ContaminationEdgeTuning contaminationEdge = new();
         [Tooltip("같은 차원의 적이 가까울 때의 화면 노이즈")]
@@ -156,6 +162,8 @@ namespace Squad
         [Header("줍기와 던지기")]
         [Tooltip("이 거리(m, 평면) 안에 있는 돌을 주울 수 있다")]
         public float pickupRadius = 4f;
+        [Tooltip("돌을 던진 뒤 이 시간(초) 동안은 어떤 돌도 주울 수 없다")]
+        public float pickupCooldown = 2.5f;
         [Tooltip("왼손뼈를 기준으로 한 돌의 위치(m, 모델 Scale 1 기준). Mixamo 뼈대에서는 Y가 손가락 쪽, Z가 손바닥이 향하는 쪽이다")]
         public Vector3 handOffset = new Vector3(0f, 0.08f, 0.05f);
         [Tooltip("던질 때 앞으로 나가는 속도(m/s)")]
@@ -257,6 +265,14 @@ namespace Squad
         public float fakeStayTime = 8f;
         [Tooltip("이동한 직후 적에게 감지되지 않고 잡히지도 않는 시간(초)")]
         public float undetectableTime = 1f;
+
+        [Header("Fake 차원의 1인칭 (시험 중)")]
+        [Tooltip("Fake에 들어가면 1인칭이 되고, Real로 돌아오면 쿼터뷰로 돌아온다. 끄면 Fake도 쿼터뷰다 (F3으로는 언제든 켤 수 있다)")]
+        public bool fakeFirstPerson = true;
+        [Tooltip("쿼터뷰와 1인칭 사이를 옮겨 가는 데 걸리는 시간(초). 머리 쪽으로 빨려 들어가고 빠져나온다")]
+        public float firstPersonBlendTime = 0.4f;
+        [Tooltip("1인칭에서 마우스로 둘러보는 빠르기")]
+        public float firstPersonMouseSensitivity = 1.5f;
     }
 
     [System.Serializable]
@@ -277,6 +293,8 @@ namespace Squad
         [Header("발견 신호 (포효)")]
         [Tooltip("플레이어를 새로 발견한 적이 이 거리(m, 평면) 안의 같은 차원 적에게 신호를 보낸다")]
         public float roarRadius = 40f;
+        [Tooltip("플레이어를 발견했을 때 주변의 같은 차원 적에게 신호를 보내는가. 끄면 각자 움직이고 합류도 없다")]
+        public bool canRoar = true;
         [Tooltip("신호를 받고 합류한 적이 이 시간(초) 동안 아무도 플레이어를 보지 못하면 합류를 풀고 돌아간다")]
         public float joinTimeout = 30f;
 
@@ -325,11 +343,15 @@ namespace Squad
         public float suspiciousToCalmTime = 8f;
 
         [Header("시야")]
+        [Tooltip("횃불을 든 플레이어만 볼 수 있는가. 켜면 횃불을 숨긴 동안에는 시야로 절대 감지하지 못한다")]
+        public bool seesOnlyTorch = false;
+        [Tooltip("소리를 듣는 거리의 배율. 소리마다 정한 반경에 곱한다. 1이면 그대로다")]
+        public float hearingMultiplier = 1f;
         [Tooltip("볼 수 있는 최대 거리(m)")]
         public float viewDistance = 22f;
         [Tooltip("시야각(도)")]
         public float viewAngle = 120f;
-        [Tooltip("눈높이(m). 적 오브젝트 위치 기준이다. 모델의 얼굴 높이(잡힐 때 연출의 Face Height)와 맞춘다")]
+        [Tooltip("시선이 출발하는 높이(m). 적 오브젝트 위치 기준이다. 모델의 실제 눈 위치와 달라도 된다. 낮을수록 엄폐물 너머가 안 보여서 숨기 쉽다")]
         public float eyeHeight = 11.6f;
         [Tooltip("시선을 겨냥할 플레이어 몸의 높이(m). 플레이어 오브젝트 위치(몸 한가운데, 발에서 1m 위) 기준이다. 모델의 가슴 높이에 맞춘다")]
         public float playerHeight = 3.5f;
@@ -397,6 +419,12 @@ namespace Squad
         [Tooltip("출구를 처음부터 열어 둘지 (시험용). 끄면 정해 둔 수의 모닥불을 켜야 열린다")]
         public bool openExitAtStart = false;
 
+        [Header("숲의 잎 줄이기 (라운드를 시작할 때 원래 숲을 솎아 낸다)")]
+        [Tooltip("원래 숲의 풀과 덤불 중 남길 비율. 잎이 넓은 것부터 치운다. 1이면 그대로다")]
+        [Range(0f, 1f)] public float forestPlantKeep = 0.5f;
+        [Tooltip("원래 숲의 나무 중 남길 비율. 잎이 넓은 것부터 치운다. 1이면 그대로다")]
+        [Range(0f, 1f)] public float forestTreeKeep = 0.75f;
+
         [Header("라운드별 구성 (1라운드부터 차례로. 라운드가 이 목록보다 많으면 마지막 것을 쓴다)")]
         public RoundSetup[] rounds =
         {
@@ -435,7 +463,7 @@ namespace Squad
         public float objectSpacing = 10f;
 
         [Header("모닥불")]
-        [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다. 덤불 고리가 겹치지 않도록 고리 지름보다 크게 둔다")]
+        [Tooltip("모닥불끼리 적어도 이만큼(m)은 떨어지게 한다. 너무 가까우면 한 번에 여러 개를 켤 수 있다")]
         public float campfireSpacing = 40f;
 
         [Header("땅에서 띄우는 높이(m)")]
@@ -451,7 +479,7 @@ namespace Squad
     {
         [Tooltip("열린 구역의 수 (1~4). 출구가 있는 남쪽부터 동 → 서 → 북 순서로 열린다. 닫힌 구역은 두꺼운 덤불로 막힌다")]
         [Range(1, 4)] public int openZones = 4;
-        [Tooltip("놓을 모닥불의 수. 모두 꺼진 채 Real에서만 막히는 덤불 고리 안에 있다")]
+        [Tooltip("놓을 모닥불의 수. 모두 꺼진 채 Real에서는 덤불에 덮여 있다")]
         public int campfires = 3;
         [Tooltip("출구가 열리려면 켜야 하는 모닥불의 수. 실제로 놓인 수보다 크면 놓인 수만큼만 켜면 된다")]
         public int firesToOpenExit = 3;
@@ -480,13 +508,15 @@ namespace Squad
         [Tooltip("구역 벽의 두께(m). 보이지 않는 상자가 이 두께로 몸과 길을 막는다")]
         public float zoneWallThickness = 4f;
         [Tooltip("구역 벽의 큰 나무 간격(m). 좁을수록 벽처럼 빽빽해 보이고, 넓을수록 줄기 사이로 건너편이 잘 보인다")]
-        public float treeWallSpacing = 3f;
+        public float treeWallSpacing = 4f;
         [Tooltip("구역 벽 나무의 굵기 배율. 키는 그대로 두고 옆으로만 키운다. 줄기와 잎이 한 모델이라 잎도 함께 넓어진다")]
-        public float treeWallGirth = 1.4f;
+        public float treeWallGirth = 1.2f;
+        [Tooltip("구역 벽 나무의 키 배율. 잎은 나무 위쪽에 있으므로, 키가 클수록 잎이 시선 위로 올라가 덜 가린다")]
+        public float treeWallHeight = 1.5f;
         [Tooltip("구역 벽 둘레에서 원래 숲의 나무와 풀을 치우는 거리(m). 벽 주변이 잎으로 뒤덮이지 않게 한다. 0이면 치우지 않는다")]
         public float wallPropClearance = 6f;
-        [Tooltip("적의 시선도 구역 벽에 막히는가. 끄면 플레이어와 적이 벽 너머로 서로 볼 수 있다 (지나갈 수는 없다)")]
-        public bool zoneWallBlocksSight = false;
+        [Tooltip("적의 시선이 구역 벽에 막히는가. 켜면 플레이어만 줄기 사이로 건너편을 볼 수 있고, 적은 벽 너머의 플레이어를 보지 못한다")]
+        public bool zoneWallBlocksSight = true;
         [Tooltip("구역 벽 나무의 크기 배율 (최소)")]
         public float treeWallScaleMin = 1.3f;
         [Tooltip("구역 벽 나무의 크기 배율 (최대)")]
@@ -500,25 +530,23 @@ namespace Squad
         [Tooltip("Real에서만 덤불로 막힌 관문의 자리(m). 봉우리 비탈의 지름길이다. 가장 가까운 모닥불을 켜면 타서 열린다. " +
                  "Fake에서는 늘 지나갈 수 있다. 0이면 두지 않는다")]
         public float sealedGateDistance = 30f;
-        [Tooltip("관문 둘레에서 모닥불 고리, 웅덩이, 적을 놓지 않고 비워 두는 거리(m). 길목이 막히지 않게 한다")]
+        [Tooltip("관문 둘레에서 모닥불, 웅덩이, 적을 놓지 않고 비워 두는 거리(m). 길목이 막히지 않게 한다")]
         public float gateClearance = 8f;
         [Tooltip("봉인된 관문의 덤불 간격(m). 빽빽하게 엉겨 있어야 구역 벽의 나무 줄과 구분된다")]
         public float sealedGateBushSpacing = 1.8f;
         [Tooltip("봉인된 관문의 덤불 줄 수")]
         [Range(1, 3)] public int sealedGateBushRows = 2;
 
-        [Header("봉인된 모닥불 (Real에서만 막히는 덤불 고리)")]
-        [Tooltip("모닥불을 둘러싼 덤불 고리의 반지름(m). Fake로 들어가 8초 안에 불까지 가서 켤 수 있어야 하므로 " +
-                 "고리 바깥에서 불까지 걷는 시간 + 켜는 시간이 8초보다 넉넉히 짧게 둔다 (걷기 7.5m/s 기준 13m ≈ 1.7초). " +
-                 "고리는 구역 벽에 걸치지 않고 한 구역 안에 들어가야 하므로, 크게 두면 한 구역에 고리가 하나밖에 들어가지 않아 모닥불이 덜 놓인다")]
-        public float ringRadius = 13f;
-        [Tooltip("덤불 고리의 두께(m)")]
-        public float ringThickness = 3f;
+        [Header("봉인된 모닥불 (Real에서는 덤불에 덮여 있고, Fake에서만 켤 수 있다)")]
+        [Tooltip("모닥불을 덮은 덤불이 몸과 길을 막는 반지름(m). Real에서 불을 켜는 거리보다 작아도 Real에서는 켤 수 없다")]
+        public float campfireCoverRadius = 3f;
+        [Tooltip("모닥불을 덮는 덤불의 수. 불이 보이지 않을 만큼 둔다")]
+        public int campfireCoverBushes = 9;
         [Tooltip("이 거리(m, 평면) 안에서 E를 누르고 있으면 불을 붙인다")]
         public float lightRadius = 4f;
         [Tooltip("불이 붙기까지 E를 누르고 있어야 하는 시간(초)")]
         public float lightHoldTime = 1.5f;
-        [Tooltip("불이 붙은 뒤 덤불 고리가 타서 사라지는 데 걸리는 시간(초). 막는 것은 불이 붙는 순간 바로 풀린다")]
+        [Tooltip("불이 붙은 뒤 덤불 덮개가 타서 사라지는 데 걸리는 시간(초). 막는 것은 불이 붙는 순간 바로 풀린다")]
         public float burnTime = 1.5f;
 
         [Header("덤불의 모습 (숲의 나무와 풀을 복제해 늘어놓는다)")]
@@ -533,7 +561,7 @@ namespace Squad
         [Tooltip("구역 벽 나무와 밑동 덤불의 색. 숲보다 조금 어둡게 둔다")]
         public Color zoneWallTint = new Color(0.55f, 0.5f, 0.55f);
 
-        [Header("오염 덤불 (봉인된 관문과 모닥불 고리. 불로 걷히는 덤불)")]
+        [Header("오염 덤불 (봉인된 관문과 모닥불 덮개. 불로 걷히는 덤불)")]
         [Tooltip("오염 텍스처가 덤불을 덮는 정도. 0이면 원래 숲의 덤불과 같다")]
         [Range(0f, 1f)] public float bushGrimeAmount = 0.85f;
         [Tooltip("오염 텍스처 한 장이 덮는 크기(m). 작으면 촘촘해서 노이즈처럼 보이고, 크면 밋밋하다")]
@@ -543,13 +571,15 @@ namespace Squad
 
         [Header("오염 웅덩이 (Fake에서만 막힘)")]
         [Tooltip("웅덩이 반지름(m, 최소)")]
-        public float poolRadiusMin = 3f;
+        public float poolRadiusMin = 4f;
         [Tooltip("웅덩이 반지름(m, 최대)")]
-        public float poolRadiusMax = 6f;
+        public float poolRadiusMax = 7f;
         [Tooltip("웅덩이 가운데의 색")]
         public Color poolColor = new Color(0.02f, 0.02f, 0.03f);
-        [Tooltip("웅덩이 가장자리의 희미한 빛 색")]
-        public Color poolRimColor = new Color(0.35f, 0.5f, 0.2f);
+        [Tooltip("웅덩이 가장자리의 빛 색. Fake 화면은 색이 빠지므로 밝게 둔다")]
+        public Color poolRimColor = new Color(0.7f, 1f, 0.3f);
+        [Tooltip("가장자리에서 피어오르는 빛의 막 높이(m). 0이면 없다")]
+        public float poolCurtainHeight = 1.8f;
 
         [Header("뿌리 (Fake에서만 보임, 꺼진 모닥불에서 출구와, 그 불이 여는 관문까지 이어진다)")]
         [Tooltip("뿌리의 굵기(m)")]
@@ -594,16 +624,16 @@ namespace Squad
         [Header("엄폐 바위 (적의 시선을 가리는 작은 바위 무리)")]
         [Tooltip("관문 하나의 둘레에 놓을 바위 무리의 수")]
         public int coverRocksPerGate = 2;
-        [Tooltip("모닥불 고리 하나의 바깥에 놓을 바위 무리의 수")]
+        [Tooltip("모닥불 하나의 곁에 놓을 바위 무리의 수")]
         public int coverRocksPerCampfire = 1;
         [Tooltip("바위의 너비(m, 최소)")]
         public float rockWidthMin = 3f;
         [Tooltip("바위의 너비(m, 최대)")]
         public float rockWidthMax = 4.5f;
-        [Tooltip("바위의 높이(m, 최소). 적의 눈이 높으므로 플레이어 키만큼은 되어야 시선을 가린다")]
-        public float rockHeightMin = 5f;
+        [Tooltip("바위의 높이(m, 최소). Real 적의 시선 높이(땅에서 약 6.5m)보다 높아야 뒤에 숨었을 때 확실히 가려진다")]
+        public float rockHeightMin = 6.5f;
         [Tooltip("바위의 높이(m, 최대)")]
-        public float rockHeightMax = 7f;
+        public float rockHeightMax = 8f;
         [Tooltip("이끼 낀 바위 텍스처가 덮는 정도")]
         [Range(0f, 1f)] public float rockGrimeAmount = 0.7f;
         [Tooltip("Fake에서 바위가 그을린 색")]
@@ -624,7 +654,7 @@ namespace Squad
         [Tooltip("노이즈 알갱이의 크기")]
         [Range(0.3f, 3f)] public float grainSize = 1.4f;
         [Tooltip("화면이 휘는 정도. 클수록 크게 일렁인다")]
-        [Range(0f, 60f)] public float wobbleAmount = 18f;
+        [Range(0f, 60f)] public float wobbleAmount = 5f;
         [Tooltip("일렁이는 빠르기")]
         public float wobbleSpeed = 1.5f;
         [Tooltip("가장자리에서 색이 번지는 정도")]
@@ -635,6 +665,48 @@ namespace Squad
         [Range(-100f, 0f)] public float saturation = -45f;
         [Tooltip("화면 전체에 입힐 색조")]
         public Color tint = new Color(0.75f, 0.85f, 1f);
+    }
+
+    [System.Serializable]
+    public class AshEnemyTuning
+    {
+        [Header("형체")]
+        [Tooltip("기둥의 키(m). 판정용 눈높이와는 따로다")]
+        public float bodyHeight = 13f;
+        [Tooltip("기둥의 폭(m)")]
+        public float bodyWidth = 5f;
+        [Tooltip("몸이 일렁이는 폭(m)")]
+        public float wobble = 0.2f;
+        [Tooltip("재의 색. 어두울수록 빛을 먹는 것처럼 보인다")]
+        public Color ashColor = new Color(0.02f, 0.02f, 0.025f, 0.8f);
+        [Tooltip("몸에서 1초에 피어오르는 재 알갱이의 수")]
+        public float smokeRate = 35f;
+        [Tooltip("발밑에 1초에 깔리는 재 알갱이의 수")]
+        public float trailRate = 14f;
+        [Tooltip("지나간 자리에 재가 남아 있는 시간(초)")]
+        public float trailTime = 5f;
+        [Tooltip("결정이 평소에 빛나는 정도. 어느 쪽을 보는지 알 수 있게 얼굴 자리를 겨우 보이게 한다")]
+        [Range(0f, 1f)] public float crystalGlow = 0.15f;
+
+        [Header("색과 빛")]
+        [Tooltip("몸의 색. 빛을 받지 않고 늘 이 색이다")]
+        public Color bodyColor = new Color(0.01f, 0.01f, 0.012f);
+        [Tooltip("윤곽의 색")]
+        public Color rimColor = new Color(0.55f, 0.6f, 0.7f);
+        [Tooltip("멀리서도 보이는 윤곽의 밝기. 0이면 빛이 닿기 전까지 안 보일 수 있다")]
+        [Range(0f, 1f)] public float baseRim = 0.15f;
+        [Tooltip("윤곽의 폭. 클수록 가장자리에만 얇게 보인다")]
+        public float rimPower = 3f;
+        [Tooltip("이 거리(m)부터 가까워질수록 윤곽이 밝아진다. 횃불을 숨겨도 위협을 알아챌 수 있게 하는 단서다")]
+        public float nearDistance = 18f;
+        [Tooltip("결정 무늬가 드러나는 원뿔의 각도(도). 좁을수록 시선을 돌릴 때 드러나는 맛이 난다")]
+        [Range(10f, 180f)] public float revealAngle = 40f;
+        [Tooltip("결정 무늬가 드러나는 거리(m)")]
+        public float revealDistance = 15f;
+        [Tooltip("결정 무늬의 색")]
+        public Color patternColor = new Color(0.95f, 0.97f, 1f);
+        [Tooltip("결정 무늬의 촘촘함. 클수록 잘게 갈라진다")]
+        public float patternScale = 10f;
     }
 
     [System.Serializable]
@@ -714,7 +786,7 @@ namespace Squad
     public class FoliageTuning
     {
         [Tooltip("플레이어 주변에 뚫는 창의 반지름(m). 플레이어 몸 한가운데를 중심으로 잰다")]
-        public float cutoutRadius = 5f;
+        public float cutoutRadius = 7f;
         [Tooltip("창의 가장자리를 부드럽게 흩뜨리는 폭(m). 0이면 칼로 자른 듯한 경계가 된다")]
         public float edgeWidth = 0.6f;
         [Tooltip("창이 열리거나 닫히는 데 걸리는 시간(초)")]

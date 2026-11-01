@@ -111,7 +111,8 @@ namespace Squad
         public void Roar()
         {
             SquadBlackboard bb = SquadBlackboard.Instance;
-            if (bb == null || enemy == null)
+            // Fake 적은 협력하지 않는다. 신호는 같은 차원에만 가므로 합류도 함께 없어진다.
+            if (bb == null || enemy == null || !Tuning.canRoar)
                 return;
 
             foreach (HorrorChaserAgent other in _all)

@@ -20,9 +20,6 @@ public class Player : MonoBehaviour
     private float walkSpeed => Squad.GameTuning.Instance.player.walkSpeed;
     private float gravity => Squad.GameTuning.Instance.player.gravity;
 
-    private Vector3 cameraForward;
-    private Vector3 cameraRight;
-
     private CharacterController controller;
     private Animator animator;
 
@@ -62,20 +59,6 @@ public class Player : MonoBehaviour
         Follow follow = cameraTransform.GetComponent<Follow>();
         if (follow != null)
             follow.SetTarget(transform);
-
-        /// 쿼터뷰 느낌을 살리기 위해 카메라를 y축 기준 45도로 돌렸기 때문에,
-        /// 방향키 입력에 따른 움직임도 카메라를 따라 돌려야 한다.
-        /// 마우스로 카메라를 회전시키는 기능을 넣지 않기로 했으므로
-        /// 이 작업을 Awake에 해도 무방하지만,
-        /// 만약 기능을 넣게 된다면 실시간으로 카메라의 축을 받아야 하기 때문에
-        /// Move() 함수로 이 내용을 옮겨야 한다.
-        cameraForward = cameraTransform.forward;
-        cameraRight = cameraTransform.right;
-        
-        cameraForward.y = 0f;
-        cameraRight.y = 0f;
-        cameraForward.Normalize();
-        cameraRight.Normalize();
     }
 
     void Update()
@@ -108,16 +91,13 @@ public class Player : MonoBehaviour
     /// 4. 애니메이션을 상황에 맞게 적절히 적용한다
     void Move()
     {
-        // 디버그용 1인칭(F3)에서는 바라보는 방향이 앞이다.
-        if (Squad.FirstPersonDebug.On)
-        {
-            Quaternion body = Squad.FirstPersonDebug.BodyRotation;
-            horizontal = (body * Vector3.right * X_Axis + body * Vector3.forward * Z_Axis).normalized;
-        }
-        else
-        {
-            horizontal = (cameraRight * X_Axis + cameraForward * Z_Axis).normalized;
-        }
+        // 1인칭에서는 바라보는 방향이 앞이고, 쿼터뷰에서는 화면의 위쪽이 앞이다.
+        // 쿼터뷰의 앞은 카메라에서 읽지 않고 설정값(camera.yaw)으로 구한다.
+        // 카메라는 1인칭 전환이나 잡힐 때의 연출로 돌아가 있을 수 있어서, 그 순간에 읽으면 기준이 틀어진다.
+        Quaternion basis = Squad.FirstPersonView.ControlsFirstPerson
+            ? Squad.FirstPersonView.BodyRotation
+            : Quaternion.Euler(0f, Squad.GameTuning.Instance.camera.yaw, 0f);
+        horizontal = (basis * Vector3.right * X_Axis + basis * Vector3.forward * Z_Axis).normalized;
         horizontal *= isWalk ? walkSpeed : moveSpeed;
         if (MovementLocked)
             horizontal = Vector3.zero;
@@ -155,10 +135,10 @@ public class Player : MonoBehaviour
 
     void Turn()
     {
-        // 디버그용 1인칭(F3)에서는 몸이 늘 바라보는 방향을 본다.
-        if (Squad.FirstPersonDebug.On && !MovementLocked)
+        // 1인칭에서는 몸이 늘 바라보는 방향을 본다.
+        if (Squad.FirstPersonView.ControlsFirstPerson && !MovementLocked)
         {
-            transform.rotation = Squad.FirstPersonDebug.BodyRotation;
+            transform.rotation = Squad.FirstPersonView.BodyRotation;
             return;
         }
 

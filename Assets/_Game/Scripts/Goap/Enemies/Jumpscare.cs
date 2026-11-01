@@ -72,6 +72,9 @@ namespace Squad
             // 플레이어를 끄면 입력이 막히고, 카메라 앞을 플레이어 모델이 가리는 일도 없다.
             player.gameObject.SetActive(false);
 
+            // 검은 형체(Fake 적)는 잡는 순간 결정 무늬가 몸 전체에 드러난다.
+            AshEnemyLight.FullReveal = true;
+
             // 함께 쫓아오던 다른 적들이 화면에 끼어들지 않도록, 잡은 적만 남기고 모두 끈다.
             // (Stage와 함께 사라지므로 다시 켤 필요는 없다)
             foreach (HorrorChaserAgent other in FindObjectsOfType<HorrorChaserAgent>())
@@ -104,6 +107,7 @@ namespace Squad
             if (follow != null)
                 follow.EndCloseUp();
 
+            AshEnemyLight.FullReveal = false;
             GameManager.Instance.GameOver();
         }
 

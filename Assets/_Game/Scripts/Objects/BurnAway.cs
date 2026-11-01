@@ -7,7 +7,7 @@ namespace Squad
     /// 막는 것은 이것과 상관없이 DimensionObstacle.Open이 그 순간 바로 푼다. 이 스크립트는 모습만 맡는다.
     ///
     /// 씬 구성:
-    ///   붙일 필요가 없다. 모닥불이 켜질 때 덤불 고리에 붙인다. (Play)
+    ///   붙일 필요가 없다. 모닥불이 켜질 때 덤불 덮개에 붙인다. (Play)
     /// </summary>
     public class BurnAway : MonoBehaviour
     {

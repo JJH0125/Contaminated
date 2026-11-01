@@ -25,8 +25,11 @@ namespace Squad
             if (SquadBlackboard.Instance == null)
                 return;
             
+            // 청각이 좋은 적(Fake)까지 찾을 수 있도록 넉넉하게 찾은 뒤, 적마다 자기 청각으로 거른다.
+            GameTuning tuning = GameTuning.Instance;
+            float widest = sound.Radius * Mathf.Max(tuning.realEnemy.hearingMultiplier, tuning.fakeEnemy.hearingMultiplier);
             int count = Physics.OverlapSphereNonAlloc(
-                position, sound.Radius, _hits, enemyLayer, QueryTriggerInteraction.Ignore);
+                position, widest, _hits, enemyLayer, QueryTriggerInteraction.Ignore);
 
             // ReportSound는 한 명이라도 소리를 들어야 호출한다.
             bool AnyOneHeard = false;
@@ -37,7 +40,7 @@ namespace Squad
             //  멀리 있는 같은 차원의 적이 그 소리를 조사하러 오게 된다)
             for (int i = 0; i < count; i++)
             {
-                if (CanHear(_hits[i], sound, dimension))
+                if (CanHear(_hits[i], position, sound, dimension))
                 {
                     AnyOneHeard = true;
                     _hits[i].GetComponentInParent<ChaserAlert>()?.RaiseAlert(sound.Alert);
@@ -48,12 +51,18 @@ namespace Squad
                     SquadBlackboard.Instance.ReportSound(position, sound, dimension, source);
         }
 
-        private static bool CanHear(Collider enemy, Sound sound, Dimension dimension)
+        private static bool CanHear(Collider enemy, Vector3 position, Sound sound, Dimension dimension)
         {
+            DimensionMember member = enemy.GetComponentInParent<DimensionMember>();
+
+            // 소리의 반경에 이 적의 청각 배율을 곱한 거리 안에 있어야 들린다.
+            float hearing = sound.Radius * GameTuning.Instance.EnemyFor(member).hearingMultiplier;
+            if ((enemy.ClosestPoint(position) - position).sqrMagnitude > hearing * hearing)
+                return false;
+
             if (sound.CanCrossDimension)
                 return true;
 
-            DimensionMember member = enemy.GetComponentInParent<DimensionMember>();
             return member != null && member.Dimension == dimension;
         }
     }

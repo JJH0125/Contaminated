@@ -5,7 +5,8 @@ namespace Squad
     /// <summary>
     /// 플레이어가 돌을 줍고 던지는 것을 관리한다. 던진 돌은 미끼가 된다(Stone).
     ///   줍기    근처(pickupRadius)에 떨어진 돌이 있으면 E로 바로 줍는다. 한 번에 하나만 들 수 있다
-    ///   던지기  돌을 든 채로 다시 E를 누르면 바라보는 방향으로 바로 던진다
+    ///   던지기  돌을 든 채로 다시 E를 누르면 바라보는 방향으로 바로 던진다.
+    ///           던진 뒤 잠깐(pickupCooldown)은 어떤 돌도 주울 수 없다
     /// 줍고 던질 때 따로 동작(애니메이션)은 없다. 걷거나 뛰는 중에도 그대로 줍고 던진다.
     ///
     /// 오른손에는 횃불이 있으므로 돌은 왼손에 든다.
@@ -34,6 +35,8 @@ namespace Squad
 
         // 지금 든 돌. 빈손이면 null.
         private Stone _held;
+        // 다시 주울 수 있게 되는 시각. 던질 때마다 새로 정한다.
+        private float _canPickUpAt;
         // 지금 줍기 안내를 띄워 두었는가
         private bool _promptShown;
 
@@ -60,7 +63,9 @@ namespace Squad
                 return;
             }
 
-            Stone nearby = HasStone ? null : Stone.Nearest(transform.position, Tuning.pickupRadius);
+            // 던진 뒤 잠깐은 주울 수 없다. 안내도 띄우지 않는다.
+            bool canPickUp = !HasStone && Time.time >= _canPickUpAt;
+            Stone nearby = canPickUp ? Stone.Nearest(transform.position, Tuning.pickupRadius) : null;
             SetPrompt(nearby != null);
 
             if (!Input.GetKeyDown(useKey))
@@ -96,6 +101,7 @@ namespace Squad
         {
             Stone stone = _held;
             _held = null;
+            _canPickUpAt = Time.time + Tuning.pickupCooldown;
 
             // 비탈에 서 있으면 그 기울기를 따라 던진다. 수평으로만 던지면 오르막에서 발 앞의 땅에 바로 박힌다.
             Vector3 forward = transform.forward;

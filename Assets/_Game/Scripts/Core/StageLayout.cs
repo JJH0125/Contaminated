@@ -15,14 +15,14 @@ namespace Squad
     ///                      닫힌 구역과의 벽은 틈이 없고, 닫힌 구역의 칸은 두 차원 모두에서 막는다
     ///                      열린 구역끼리의 벽에는 관문을 뚫는다: 바깥쪽의 열린 관문과, 봉우리 비탈의 봉인된 관문(Real에서만 막힘)
     ///                      관문 둘레에는 숨을 곳이 되는 엄폐 바위를 놓는다 (CoverRockBuilder)
-    ///   3. 봉인된 모닥불    열린 구역에 서로 떨어뜨려 놓는다. 모두 꺼진 채, Real에서만 막히는 덤불 고리 안에 있다
-    ///                      고리는 한 구역 안에 들어가야 하고(벽에 걸치지 않게), 관문 앞을 막지 않아야 한다
-    ///                      고리 바깥에도 엄폐 바위를 놓는다
-    ///   4. 오염 웅덩이      Fake에서만 막는다. 절반은 모닥불 고리 바깥 가까이에 두어 Fake로 들어가는 길을 고르게 한다
+    ///   3. 봉인된 모닥불    열린 구역에 서로 떨어뜨려 놓는다. 모두 꺼진 채, Real에서는 덤불에 덮여 있다
+    ///                      벽에 걸치지 않게 한 구역 안에 놓고, 관문 앞을 막지 않게 한다
+    ///                      모닥불 곁에도 엄폐 바위를 놓는다
+    ///   4. 오염 웅덩이      Fake에서만 막는다. 절반은 모닥불 가까이에 두어 Fake에서 다가가는 길을 고르게 한다
     ///   5. 뿌리            Fake에서만 보인다. 꺼진 모닥불마다 Fake의 길을 따라 출구 아치까지 뻗는다
     ///      관문 잇기        봉인된 관문마다 가장 가까운 모닥불과 잇고, 그 불에서 관문까지도 뿌리를 뻗는다.
     ///                      그 불을 켜면 관문이 타서 열려 봉우리 비탈의 지름길이 생긴다
-    ///   6. 적              열린 구역에서, 플레이어와 떨어진 곳. 고리 안이나 웅덩이 위에는 놓지 않는다
+    ///   6. 적              열린 구역에서, 플레이어와 떨어진 곳. 덮개나 웅덩이 위에는 놓지 않는다
     ///                      무리 지어 다니는 차원(Real)의 적은 packSize마리씩 무리를 짜서 우두머리 곁에 함께 놓는다
     ///   7. 돌              열린 구역 곳곳
     ///
@@ -32,14 +32,14 @@ namespace Squad
     ///   - 열린 구역에 있다
     ///   - 땅이 너무 가파르지 않다
     ///   - 길찾기 격자에서 두 차원 모두 걸을 수 있는 칸이다 (나무 기둥 안이 아니다)
-    ///   - 덤불 고리 안이나 웅덩이 위, 관문 앞이 아니다
+    ///   - 덤불 덮개나 웅덩이 위, 관문 앞이 아니다
     ///
     /// 높이는 프리팹에 놓인 높이를 읽지 않고, 종류마다 정해 둔 값만큼 그 자리의 땅 위에 올린다.
     ///
     /// 적과 모닥불은 Stage 프리팹에 하나씩만 넣어 두면, 그것을 견본으로 삼아 라운드 구성의 수만큼 복제한다.
     /// 적은 차원마다 따로 센다. 구성의 수가 0이면 그 차원의 견본도 꺼 둔다. (1라운드에는 Fake 적이 없다)
     ///
-    /// 모닥불 주변의 나무와 풀은 라운드가 시작될 때 치워서, 덤불 고리와 겹치지 않게 한다.
+    /// 모닥불 주변의 나무와 풀은 라운드가 시작될 때 치워서, 덤불 덮개와 겹치지 않게 한다.
     /// 숲은 Stage가 아니라 씬에 있으므로 지우지 않고 꺼 두었다가, 다음 라운드가 시작될 때 되돌린다.
     /// 씬에 지형(Terrain)이 없으면 아무것도 하지 않으므로, 프리팹의 배치가 그대로 쓰인다.
     /// 라운드의 밝기와 안개도 여기서 정한다. (RoundAtmosphere)
@@ -69,6 +69,8 @@ namespace Squad
         private float objectSpacing => GameTuning.Instance.stage.objectSpacing;
         private float campfireSpacing => GameTuning.Instance.stage.campfireSpacing;
         private static MapTuning Map => GameTuning.Instance.map;
+        // 모닥불 둘레에 다른 것을 놓지 않고 비워 두는 거리(m): 덮개와, 그 곁에서 불을 켤 자리
+        private static float CampfireFootprint => Map.campfireCoverRadius + 3f;
 
         [Header("○ 돌 (미끼)")]
         [Tooltip("돌로 쓸 모델(프리팹). 여러 개를 넣으면 놓을 때마다 그중 하나를 고른다. 비워 두면 돌을 놓지 않는다")]
@@ -101,12 +103,12 @@ namespace Squad
         private Vector3 _rootEnd;
         // 이미 오브젝트를 놓은 자리들
         private readonly List<Vector3> _placed = new();
-        // 다른 것을 놓으면 안 되는 원: 덤불 고리 안쪽과 웅덩이 (x, z, 반지름)
+        // 다른 것을 놓으면 안 되는 원: 덤불 덮개와 웅덩이 (x, z, 반지름)
         private readonly List<Vector3> _keepOut = new();
         private readonly List<Vector3> _campfireSpots = new();
         // Real에서만 막힌 관문과 그 가운데 자리. 모닥불을 다 놓은 뒤 가장 가까운 불과 잇는다.
         private readonly List<(DimensionObstacle gate, Vector3 spot)> _sealedGates = new();
-        // 모든 관문의 가운데 자리. 모닥불 고리가 관문 앞을 막지 않게 한다.
+        // 모든 관문의 가운데 자리. 모닥불이 관문 앞을 막지 않게 한다.
         private readonly List<Vector3> _gateSpots = new();
         // 닫힌 구역이라 막아 둔 칸. Stage가 사라질 때 풀어 준다.
         private List<Node> _closedZoneNodes;
@@ -119,6 +121,7 @@ namespace Squad
             if (_terrain == null)
                 return;
 
+            ThinForest();
             _pathfinder = FindObjectOfType<Pathfinder>();
             int round = GameManager.Instance != null ? GameManager.Instance.CurrentRound : 1;
             _round = GameTuning.Instance.stage.Round(round);
@@ -256,17 +259,17 @@ namespace Squad
             }
         }
 
-        // 모닥불 고리 바로 바깥에 바위 무리를 놓는다.
+        // 모닥불 곁에 바위 무리를 놓는다.
         private void PlaceCampfireCover()
         {
-            float ringOuter = Map.ringRadius + Map.ringThickness;
+            float footprint = CampfireFootprint;
             foreach (Vector3 fire in _campfireSpots)
             {
                 for (int n = 0; n < Map.coverRocksPerCampfire; n++)
                 {
                     for (int i = 0; i < 12; i++)
                     {
-                        float distance = ringOuter + CoverRockBuilder.FootprintRadius + Random.Range(1f, 8f);
+                        float distance = footprint + CoverRockBuilder.FootprintRadius + Random.Range(1f, 8f);
                         Vector3 spot = fire + ZoneMap.Direction(Random.Range(0f, 360f)) * distance;
                         if (!IsUsable(spot, CoverRockBuilder.FootprintRadius))
                             continue;
@@ -452,6 +455,10 @@ namespace Squad
                 Dimension dimension = member != null ? member.Dimension : Dimension.None;
                 EnemyTuning tuning = GameTuning.Instance.EnemyFor(member);
 
+                // Fake 적은 뼈대 모델 대신 재의 형체로 그린다.
+                if (dimension == Dimension.Fake && enemy.GetComponent<AshEnemyBody>() == null)
+                    enemy.gameObject.AddComponent<AshEnemyBody>();
+
                 if (tuning.packSize <= 1)
                 {
                     PlaceAwayFromPlayer(enemy.transform, playerSpot, minDistance, 0f);
@@ -516,14 +523,14 @@ namespace Squad
         }
 
         /// <summary>
-        /// 꺼진 모닥불을 열린 구역에 서로 떨어뜨려 놓고, 하나하나를 Real에서만 막히는 덤불 고리로 둘러싼다.
-        /// 고리가 닫힌 구역이나 지형 밖으로 걸치지 않고, 출구와 플레이어 시작 자리에서도 떨어진 자리만 고른다.
+        /// 꺼진 모닥불을 열린 구역에 서로 떨어뜨려 놓고, 하나하나를 Real에서만 막히는 덤불로 덮는다.
+        /// 덮개가 닫힌 구역이나 지형 밖으로 걸치지 않고, 출구와 플레이어 시작 자리에서도 떨어진 자리만 고른다.
         /// </summary>
         private List<Campfire> PlaceCampfires()
         {
             var placed = new List<Campfire>();
             var group = new List<Campfire>(GetComponentsInChildren<Campfire>(true));
-            float ringOuter = Map.ringRadius + Map.ringThickness;
+            float footprint = CampfireFootprint;
             int open = Mathf.Clamp(_round.openZones, 1, ZoneMap.Count);
 
             foreach (Campfire campfire in GetCopies(group, Mathf.Max(0, _round.campfires)))
@@ -533,11 +540,11 @@ namespace Squad
                 for (int i = 0; i < MaxTries && !found; i++)
                 {
                     spot = RandomSpot();
-                    found = IsUsable(spot, ringOuter)
-                            && RingFits(spot, ringOuter + Map.zoneWallThickness, open)
-                            && IsClearOfGates(spot, ringOuter)
-                            && FlatDistance(spot, _playerSpot) >= ringOuter + StartClearance
-                            && FlatDistance(spot, _exitSpot) >= ringOuter + StartClearance;
+                    found = IsUsable(spot, footprint)
+                            && FitsInZone(spot, footprint + Map.zoneWallThickness, open)
+                            && IsClearOfGates(spot, footprint)
+                            && FlatDistance(spot, _playerSpot) >= footprint + StartClearance
+                            && FlatDistance(spot, _exitSpot) >= footprint + StartClearance;
                     foreach (Vector3 other in _campfireSpots)
                         if (FlatDistance(spot, other) < campfireSpacing)
                             found = false;
@@ -553,14 +560,13 @@ namespace Squad
                 _campfireSpots.Add(spot);
                 // 모닥불은 기준점이 땅에 닿는 지점이 되도록 만들어져 있으므로 띄우지 않고 그대로 땅에 놓는다.
                 PlaceOnGround(campfire.transform, spot, 0f);
-                DimensionObstacle ring = BarrierBuilder.BuildRing(
-                    transform, "Campfire Ring", spot, Map.ringRadius, Dimension.Real);
-                campfire.Seal(ring);
-                _keepOut.Add(new Vector3(spot.x, spot.z, ringOuter + 1f));
+                DimensionObstacle cover = BarrierBuilder.BuildCampfireCover(transform, spot);
+                campfire.Seal(cover);
+                _keepOut.Add(new Vector3(spot.x, spot.z, footprint + 1f));
                 placed.Add(campfire);
             }
 
-            ClearPropsAround(_campfireSpots, ringOuter + 1f);
+            ClearPropsAround(_campfireSpots, footprint + 1f);
             if (GameManager.Instance != null)
                 GameManager.Instance.SetPlacedCampfires(placed.Count);
             return placed;
@@ -568,14 +574,14 @@ namespace Squad
 
         /// <summary>
         /// Fake에서만 막는 오염 웅덩이를 놓는다.
-        /// 절반은 모닥불 고리 바로 바깥에 두어, Fake로 넘어가 고리 안으로 들어갈 방향을 고르게 한다.
-        /// (고리 쪽 길이 다 막히지 않도록 고리에 닿지는 않게 둔다) 나머지는 열린 구역 곳곳에 흩는다.
+        /// 절반은 모닥불 가까이에 두어, Fake에서 다가갈 방향을 고르게 한다.
+        /// (불에 다가갈 길이 다 막히지 않도록 불에 닿지는 않게 둔다) 나머지는 열린 구역 곳곳에 흩는다.
         /// </summary>
         private void PlacePools()
         {
             int count = Mathf.Max(0, _round.contaminationPools);
             var poolSpots = new List<Vector3>();
-            float ringOuter = Map.ringRadius + Map.ringThickness;
+            float footprint = CampfireFootprint;
 
             for (int n = 0; n < count; n++)
             {
@@ -589,7 +595,7 @@ namespace Squad
                 {
                     if (nearFire)
                     {
-                        float distance = ringOuter + radius + Random.Range(2f, 12f);
+                        float distance = footprint + radius + Random.Range(2f, 12f);
                         spot = fire + ZoneMap.Direction(Random.Range(0f, 360f)) * distance;
                     }
                     else
@@ -615,7 +621,7 @@ namespace Squad
 
         /// <summary>
         /// 꺼진 모닥불마다 출구까지 이어진 뿌리를 만든다. Fake의 길찾기 격자로 길을 내므로 웅덩이를 피해 돌아간다.
-        /// (덤불 고리는 Real에서만 막으므로 뿌리는 고리를 가로질러 불까지 닿는다) 길이 없으면 곧게 잇는다.
+        /// (덤불 덮개는 Real에서만 막으므로 뿌리는 불까지 닿는다) 길이 없으면 곧게 잇는다.
         /// </summary>
         private void BuildRoots(List<Campfire> campfires)
         {
@@ -684,6 +690,37 @@ namespace Squad
                 PlaceOnGround(stoneObject.transform, spot, 0f);
                 stone.SnapToGround();
                 stoneSpots.Add(spot);
+            }
+        }
+
+        // 잎이 시야를 너무 가리지 않도록 원래 숲을 솎아 낸다. 잎이 넓게 퍼진 것부터 꺼 둔다.
+        // 꺼 둔 나무의 칸은 격자에서 계속 막혀 있지만, 추격자가 그 한두 칸을 돌아갈 뿐이다.
+        private void ThinForest()
+        {
+            GameObject props = GameObject.Find(ForestPropsName);
+            if (props == null)
+                return;
+
+            StageTuning stage = GameTuning.Instance.stage;
+            foreach (Transform group in props.transform)
+            {
+                float keep = group.name == "Trees" ? stage.forestTreeKeep : stage.forestPlantKeep;
+                var items = new List<(GameObject prop, float width)>();
+                foreach (Transform prop in group)
+                {
+                    float width = 0f;
+                    foreach (Renderer part in prop.GetComponentsInChildren<Renderer>())
+                        width = Mathf.Max(width, part.bounds.size.x, part.bounds.size.z);
+                    items.Add((prop.gameObject, width));
+                }
+
+                items.Sort((a, b) => b.width.CompareTo(a.width));
+                int remove = items.Count - Mathf.RoundToInt(items.Count * keep);
+                for (int i = 0; i < remove; i++)
+                {
+                    items[i].prop.SetActive(false);
+                    _clearedProps.Add(items[i].prop);
+                }
             }
         }
 
@@ -796,8 +833,8 @@ namespace Squad
         }
 
         // center 둘레 radius의 원이 지형 안, center와 같은 열린 구역 안에 다 들어오는가.
-        // (덤불 고리가 구역 벽이나 가장자리에 걸치지 않게. 경계마다 벽이 서므로 열린 구역끼리의 경계도 넘으면 안 된다)
-        private bool RingFits(Vector3 center, float radius, int openZones)
+        // (모닥불 자리가 구역 벽이나 가장자리에 걸치지 않게. 경계마다 벽이 서므로 열린 구역끼리의 경계도 넘으면 안 된다)
+        private bool FitsInZone(Vector3 center, float radius, int openZones)
         {
             if (!ZoneMap.IsOpen(center, _center, openZones))
                 return false;
@@ -816,7 +853,7 @@ namespace Squad
             return true;
         }
 
-        // center 둘레 radius의 원이 관문 앞에 비워 둔 자리와 겹치지 않는가. (덤불 고리가 길목을 막지 않게)
+        // center 둘레 radius의 원이 관문 앞에 비워 둔 자리와 겹치지 않는가. (모닥불이 길목을 막지 않게)
         private bool IsClearOfGates(Vector3 center, float radius)
         {
             foreach (Vector3 gate in _gateSpots)

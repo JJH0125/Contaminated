@@ -6,8 +6,7 @@ namespace Squad
     /// 꺼진 모닥불 가까이에서 E를 누르고 있으면 불을 붙인다.
     /// 누르는 동안은 제자리에 멈추고, 정해 둔 시간(1.5초)을 다 채우면 불이 붙는다. 중간에 떼면 처음부터 다시 누른다.
     ///
-    /// 꺼진 모닥불은 Real에서만 막히는 덤불 고리 안에 있으므로, 실제로는 Fake에 들어가서 켜게 된다.
-    /// Fake에는 8초만 머물 수 있으므로 "고리 바깥에서 불까지 걷는 시간 + 누르는 시간"이 8초 안에 들어와야 한다.
+    /// 꺼진 모닥불은 Real에서는 덤불에 덮여 있어 켤 수 없고, Fake에서만 켤 수 있다. Fake에는 8초만 머물 수 있으므로, 불 가까이에서 넘어와야 한다.
     ///
     /// E는 돌을 줍고 던지는 키이기도 하다. 꺼진 모닥불 곁에서는 불 붙이기가 먼저이고, 돌은 줍거나 던지지 않는다.
     /// 수치(거리, 누르는 시간)는 GameTuning 에셋의 map 항목에서 읽는다.
@@ -24,6 +23,8 @@ namespace Squad
         [SerializeField] private string promptMessage = "[E] 길게 눌러 불 붙이기";
         [Tooltip("누르고 있는 동안의 문구. {0}=진행도(%)")]
         [SerializeField] private string progressFormat = "불 붙이는 중... {0:0}%";
+        [Tooltip("Real에서 덤불에 덮인 모닥불 곁에 왔을 때 띄울 문구")]
+        [SerializeField] private string coveredMessage = "검은 덤불에 덮여 있어 불을 붙일 수 없다";
         [Tooltip("횃불을 숨기고 있을 때(또는 횃불이 없을 때) 꺼진 모닥불 곁에서 띄울 문구")]
         [SerializeField] private string needTorchMessage = "횃불을 꺼내야 불을 붙일 수 있다";
 
@@ -52,12 +53,14 @@ namespace Squad
             bool playing = Time.timeScale > 0f &&
                            (GameManager.Instance == null || GameManager.Instance.CurrentState == GameState.Playing);
             Campfire target = playing ? Nearest(tuning.lightRadius) : null;
-            HasTarget = target != null;
+            // Real에서는 덤불에 덮여 있어 켤 수 없다. 돌은 평소처럼 줍고 던질 수 있도록 대상으로 치지 않는다.
+            bool covered = target != null && _player.myDimension != Dimension.Fake;
+            HasTarget = target != null && !covered;
 
-            if (target == null)
+            if (target == null || covered)
             {
                 Release();
-                SetPrompt(null);
+                SetPrompt(covered ? coveredMessage : null);
                 return;
             }
 

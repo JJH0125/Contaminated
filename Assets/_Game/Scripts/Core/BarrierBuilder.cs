@@ -9,7 +9,7 @@ namespace Squad
     ///               플레이어를 가려도 투명해지지 않는다.
     ///               열린 구역끼리의 벽에는 관문 자리가 비어 있다
     ///   봉인된 관문 Real에서만 막는 짧은 오염 덤불 벽. 검게 엉겨 있어 나무 벽과 구분된다. 이어진 모닥불을 켜면 타서 열린다
-    ///   덤불 고리   꺼진 모닥불을 둘러싼 오염 덤불. Real에서만 막는다
+    ///   덤불 덮개   꺼진 모닥불 바로 위를 덮은 오염 덤불. Real에서만 보이고 Real에서만 막는다
     ///   오염 웅덩이 Fake에서만 막는다
     ///   뿌리        꺼진 모닥불에서 출구와 관문까지 이어진다. Fake에서만 보인다 (RootLine)
     ///
@@ -53,7 +53,7 @@ namespace Squad
             }
         }
 
-        // ── 덤불 벽과 고리 ───────────────────────────────────────────
+        // ── 덤불 벽과 덮개 ───────────────────────────────────────────
 
         /// <summary>
         /// from에서 to까지 구역 벽을 세운다. 높은 나무 줄이고, 줄기 사이로 건너편이 보이지만 지나갈 수는 없다.
@@ -79,10 +79,16 @@ namespace Squad
                 Vector3 tree = from + direction * (along + Random.Range(-0.5f, 0.5f)) + side * Random.Range(-0.5f, 0.5f);
                 GameObject trunk = PlaceBush(wall.transform, trees, tree, tint, Tuning.treeWallScaleMin, Tuning.treeWallScaleMax, fades: false);
                 // 키는 그대로 두고 옆으로만 키워 굵은 줄기로 만든다.
-                Vector3 girth = trunk.transform.localScale;
-                girth.x *= Tuning.treeWallGirth;
-                girth.z *= Tuning.treeWallGirth;
-                trunk.transform.localScale = girth;
+                // 모델마다 세워 둔 각도가 달라 어느 축이 위쪽인지 다르므로, 지금 위를 향한 축을 찾아 키로 삼는다.
+                Vector3 size = trunk.transform.localScale;
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    Vector3 local = Vector3.zero;
+                    local[axis] = 1f;
+                    bool isUp = Mathf.Abs(Vector3.Dot(trunk.transform.rotation * local, Vector3.up)) > 0.7f;
+                    size[axis] *= isUp ? Tuning.treeWallHeight : Tuning.treeWallGirth;
+                }
+                trunk.transform.localScale = size;
             }
 
             return Finish(wall, colliders, Dimension.None);
@@ -117,7 +123,7 @@ namespace Squad
         }
 
         /// <summary>
-        /// 출구 덤불 아치의 앞면을 세운다. 검게 엉긴 오염 덤불로 두 차원 모두에서 막고, 가운데가 높이 솟는다.
+        /// 출구 덤불 아치의 앞면을 세운다. 검게 엉긴 오염 덤불로 두 차원 모두에서 몸과 길과 시선을 막고, 가운데가 높이 솟는다.
         /// 나중에 하나씩 태울 수 있게 덤불들을 돌려준다. (ExitArch)
         /// </summary>
         public static DimensionObstacle BuildExitFront(Transform parent, Vector3 from, Vector3 to, out List<GameObject> bushes)
@@ -125,7 +131,8 @@ namespace Squad
             GameObject front = new GameObject("Exit Arch");
             front.transform.SetParent(parent, false);
             Transform colliders = NewChild(front.transform, "Colliders");
-            AddWallBoxes(colliders, from, to, out float length, out Vector3 direction, blocksSight: false);
+            // 양옆의 나무 벽과 같게, 다 타서 열리기 전까지는 적의 시선도 막는다.
+            AddWallBoxes(colliders, from, to, out float length, out Vector3 direction, blocksSight: Tuning.zoneWallBlocksSight);
 
             bushes = new List<GameObject>();
             List<GameObject> templates = Templates(trees: false);
@@ -146,47 +153,44 @@ namespace Squad
             return Finish(front, colliders, Dimension.None);
         }
 
-        /// <summary>center를 둘러싼 덤불 고리를 세운다. dimension에서만 막는다.</summary>
-        public static DimensionObstacle BuildRing(Transform parent, string name, Vector3 center, float radius,
-                                                  Dimension dimension)
+        /// <summary>
+        /// 꺼진 모닥불 바로 위를 오염 덤불로 덮는다. Real에서만 보이고 Real에서만 막으므로,
+        /// Fake로 넘어가면 덤불이 걷혀 있어 불을 켤 수 있다.
+        /// </summary>
+        public static DimensionObstacle BuildCampfireCover(Transform parent, Vector3 center)
         {
-            GameObject ring = new GameObject(name);
-            ring.transform.SetParent(parent, false);
-            Transform colliders = NewChild(ring.transform, "Colliders");
-            float thickness = Tuning.ringThickness;
+            GameObject cover = new GameObject("Campfire Cover");
+            cover.transform.SetParent(parent, false);
+            Transform colliders = NewChild(cover.transform, "Colliders");
 
-            int segments = Mathf.Max(8, Mathf.CeilToInt(2f * Mathf.PI * radius / 5f));
-            float segmentLength = 2f * Mathf.PI * radius / segments * 1.15f;
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = (i + 0.5f) * 360f / segments;
-                Vector3 spot = Ground(center + ZoneMap.Direction(angle) * radius);
-                Vector3 tangent = ZoneMap.Direction(angle + 90f);
-                AddBox(colliders, spot, tangent, thickness, segmentLength);
-            }
+            float radius = Tuning.campfireCoverRadius;
+            var body = new GameObject("Cover Collider").AddComponent<CapsuleCollider>();
+            body.transform.SetParent(colliders, false);
+            body.transform.position = Ground(center);
+            body.radius = radius;
+            body.height = WallHeight;
+            body.direction = 1;
 
+            // 가운데에 하나, 둘레에 나머지를 두어 불이 보이지 않게 덮는다.
             List<GameObject> templates = Templates(trees: false);
-            int rows = Mathf.Max(1, Tuning.bushRows);
-            int count = Mathf.CeilToInt(2f * Mathf.PI * radius / Tuning.bushSpacing);
-            for (int i = 0; i < count; i++)
+            int count = Mathf.Max(1, Tuning.campfireCoverBushes);
+            PlaceContaminatedBush(cover.transform, templates, center);
+            for (int i = 1; i < count; i++)
             {
-                for (int row = 0; row < rows; row++)
-                {
-                    float angle = (i + Random.Range(-0.3f, 0.3f)) * 360f / count;
-                    float across = rows > 1 ? Mathf.Lerp(-thickness * 0.4f, thickness * 0.4f, row / (rows - 1f)) : 0f;
-                    Vector3 spot = center + ZoneMap.Direction(angle) * (radius + across + Random.Range(-0.3f, 0.3f));
-                    PlaceContaminatedBush(ring.transform, templates, spot);
-                }
+                float angle = i * 360f / (count - 1) + Random.Range(-15f, 15f);
+                Vector3 spot = center + ZoneMap.Direction(angle) * (radius * Random.Range(0.4f, 0.9f));
+                PlaceContaminatedBush(cover.transform, templates, spot);
             }
 
-            return Finish(ring, colliders, dimension);
+            return Finish(cover, colliders, Dimension.Real);
         }
 
         // ── 오염 웅덩이 ──────────────────────────────────────────────
 
         /// <summary>
         /// center에 오염 웅덩이를 만든다. Fake에서만 막고 Fake에서만 보인다.
-        /// 땅의 굴곡을 따라 휘는 원판이라, 비탈에서도 땅에 붙어 있다. 가장자리는 들쭉날쭉하고 희미하게 빛난다.
+        /// 땅의 굴곡을 따라 휘는 원판이라, 비탈에서도 땅에 붙어 있다. 가운데는 검고, 들쭉날쭉한 가장자리가 밝게 빛나며
+        /// 그 위로 빛의 막이 피어올라 어두운 땅에서도 어디까지 막히는지 보인다.
         /// </summary>
         public static DimensionObstacle BuildPool(Transform parent, Vector3 center, float radius)
         {
@@ -196,7 +200,7 @@ namespace Squad
 
             var mesh = new Mesh { name = "Contamination Pool" };
             const int Spokes = 28;
-            const int Rings = 4;
+            const int Rings = 5;
             var vertices = new List<Vector3> { Ground(center) + Vector3.up * 0.08f };
             var colors = new List<Color> { Tuning.poolColor };
             float seed = Random.value * 100f;
@@ -210,8 +214,9 @@ namespace Squad
                     float edge = radius * (0.8f + 0.35f * Mathf.PerlinNoise(seed + spoke * 0.35f, seed));
                     Vector3 spot = Ground(center + ZoneMap.Direction(angle) * edge * t) + Vector3.up * 0.08f;
                     vertices.Add(spot);
-                    Color color = Color.Lerp(Tuning.poolColor, Tuning.poolRimColor, t * t);
-                    color.a = ring == Rings ? 0f : 0.95f;
+                    // 가운데는 어둡게 두고, 가장자리 띠만 밝힌다. 맨 바깥은 땅으로 흐려진다.
+                    Color color = Color.Lerp(Tuning.poolColor, Tuning.poolRimColor, Mathf.InverseLerp(0.5f, 0.8f, t));
+                    color.a = ring == Rings ? 0f : 1f;
                     colors.Add(color);
                 }
             }
@@ -228,6 +233,28 @@ namespace Squad
                     triangles.AddRange(new[] { inner + spoke, inner + next, outer + spoke });
                     triangles.AddRange(new[] { inner + next, outer + next, outer + spoke });
                 }
+            }
+
+            // 가장자리에서 위로 피어오르는 빛의 막. 위로 갈수록 흐려진다.
+            int rimStart = 1 + (Rings - 2) * Spokes;
+            int curtainBase = vertices.Count;
+            for (int spoke = 0; spoke < Spokes; spoke++)
+            {
+                Color glow = Tuning.poolRimColor;
+                glow.a = 0.7f;
+                vertices.Add(vertices[rimStart + spoke]);
+                colors.Add(glow);
+                glow.a = 0f;
+                vertices.Add(vertices[rimStart + spoke] + Vector3.up * Tuning.poolCurtainHeight);
+                colors.Add(glow);
+            }
+            for (int spoke = 0; spoke < Spokes; spoke++)
+            {
+                int next = (spoke + 1) % Spokes;
+                int a = curtainBase + spoke * 2;
+                int b = curtainBase + next * 2;
+                triangles.AddRange(new[] { a, b, a + 1 });
+                triangles.AddRange(new[] { b, b + 1, a + 1 });
             }
 
             mesh.SetVertices(vertices);
@@ -422,7 +449,7 @@ namespace Squad
         private static GameObject PlaceContaminatedBush(Transform parent, List<GameObject> templates, Vector3 spot, float scale = 1f)
         {
             GameObject bush = PlaceBush(parent, templates, spot, Tuning.contaminatedBushTint,
-                                        Tuning.bushScaleMin * scale, Tuning.bushScaleMax * scale);
+                                        Tuning.bushScaleMin * scale, Tuning.bushScaleMax * scale, fades: false);
             ApplyGrime(bush, BushTexture, Tuning.bushGrimeAmount, Color.white, opaque: false);
             return bush;
         }
@@ -434,12 +461,14 @@ namespace Squad
         {
             GameObject bush;
             Vector3 scale = Vector3.one;
+            Quaternion sourceRotation = Quaternion.identity;
             if (templates.Count > 0)
             {
                 GameObject template = templates[Random.Range(0, templates.Count)];
                 bush = Object.Instantiate(template, parent);
                 // 견본이 크기를 키운 부모 아래에 있을 수 있으므로, 부모의 배율까지 곱한 실제 크기로 맞춘다.
                 scale = template.transform.lossyScale;
+                sourceRotation = template.transform.rotation;
                 bush.SetActive(true);
                 // 몸과 길은 장벽의 상자가 막는다. 나무의 기둥 Collider가 남으면 두 차원 모두에서 막히므로 지운다.
                 foreach (Collider part in bush.GetComponentsInChildren<Collider>(true))
@@ -455,7 +484,8 @@ namespace Squad
 
             bush.name = "Bush";
             bush.transform.position = Ground(spot);
-            bush.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            // 견본을 세워 둔 각도를 살린 채 돌린다. (모델의 위쪽이 Y가 아닌 것이 많아서, 각도를 지우면 옆으로 눕는다)
+            bush.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * sourceRotation;
             bush.transform.localScale = scale * Random.Range(scaleMin, scaleMax);
             // 플레이어를 가리면 숲의 나무처럼 동그랗게 창이 뚫리게 한다.
             if (fades)

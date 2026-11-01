@@ -29,9 +29,6 @@ public class Follow : MonoBehaviour
     private Vector3 lookAheadVelocity;
     private Vector3 lastTargetPosition;
 
-    // 쿼터뷰와 1인칭 사이를 옮겨 가는 데 걸리는 시간(초)과, 지금 어디쯤인가 (0: 쿼터뷰, 1: 1인칭)
-    private const float FirstPersonBlendTime = 0.7f;
-    private float firstPersonBlend;
 
     // 클로즈업 중에는 플레이어를 따라가지 않는다.
     private bool isCloseUp;
@@ -64,18 +61,17 @@ public class Follow : MonoBehaviour
         ApplyFirstPersonBlend();
     }
 
-    // 디버그용 1인칭(F3): 쿼터뷰 자리와 눈높이 자리 사이를 부드럽게 옮겨 간다.
+    // 1인칭: 쿼터뷰 자리와 눈높이 자리 사이를 부드럽게 옮겨 간다.
     void ApplyFirstPersonBlend()
     {
-        float goal = Squad.FirstPersonDebug.On ? 1f : 0f;
-        firstPersonBlend = Mathf.MoveTowards(firstPersonBlend, goal, Time.unscaledDeltaTime / FirstPersonBlendTime);
-        if (firstPersonBlend <= 0f)
+        float blend = Squad.FirstPersonView.Blend;
+        if (blend <= 0f)
             return;
 
-        float t = Mathf.SmoothStep(0f, 1f, firstPersonBlend);
+        float t = Mathf.SmoothStep(0f, 1f, blend);
         transform.SetPositionAndRotation(
-            Vector3.Lerp(transform.position, target.position + Squad.FirstPersonDebug.EyeOffset, t),
-            Quaternion.Slerp(transform.rotation, Squad.FirstPersonDebug.ViewRotation, t));
+            Vector3.Lerp(transform.position, target.position + Squad.FirstPersonView.EyeOffset, t),
+            Quaternion.Slerp(transform.rotation, Squad.FirstPersonView.ViewRotation, t));
     }
 
     // 플레이어가 이번 프레임에 움직인 만큼으로 속도를 구하고, 그 방향으로 밀어 둘 정도를 서서히 맞춘다.

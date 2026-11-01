@@ -4,7 +4,7 @@ namespace Squad
 {
     /// <summary>
     /// 한 차원에 속한 것이 가지는, 차원이 담긴 일종의 이름표.
-    /// 적뿐 아니라 차원마다 다른 장애물(덤불 고리, 오염 웅덩이)과 Fake에서만 보이는 뿌리에도 붙는다.
+    /// 적뿐 아니라 차원마다 다른 장애물(덤불 덮개, 오염 웅덩이)과 Fake에서만 보이는 뿌리에도 붙는다.
     ///
     /// 플레이어와 같은 차원일 때만 보인다. Dimension.None이면 두 차원 모두에 있는 것이라 늘 보인다.
     ///
@@ -35,6 +35,12 @@ namespace Squad
             dimension = memberDimension;
             _renderers = GetComponentsInChildren<Renderer>(true);
         }
+
+        /// <summary>
+        /// 함께 보이고 숨을 Renderer를 정한다. (Fake 적처럼 코드로 몸을 만드는 경우)
+        /// Start보다 먼저 불러야 처음부터 차원에 맞게 보이고 숨는다.
+        /// </summary>
+        public void AddRenderers(Renderer[] renderers) => _renderers = renderers;
 
         void Start()
         {

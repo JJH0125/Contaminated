@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Total Horror V2 Fake
-  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 4800000, guid: a54ce3dcfba84221bac1d6051544a934, type: 3}
   m_ValidKeywords:
   - _EMISSION
   - _NORMALMAP

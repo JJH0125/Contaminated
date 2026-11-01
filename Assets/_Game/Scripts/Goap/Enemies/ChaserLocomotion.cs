@@ -140,7 +140,7 @@ namespace Squad
             // path가 비어있거나
             // path를 모두 건너왔거나
             // 플레이어가 유의미하게 움직였거나
-            // 막힌 칸이 바뀌었다면 (덤불 고리가 열리면 그 안을 가로지르는 지름길이 생긴다)
+            // 막힌 칸이 바뀌었다면 (봉인 관문이 열리면 그쪽으로 가로지르는 지름길이 생긴다)
             if (_path == null ||
                 _waypointIndex >= _path.Count ||
                 Vector3.Distance(_lastPathTarget, target) > repathThreshold ||

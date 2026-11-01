@@ -168,6 +168,7 @@ namespace Squad
         private void DetectVision(Transform target)
         {
             bool canSee = IsInSameDimension()
+            && (!Tuning.seesOnlyTorch || !TorchHolder.IsHiding)   // Fake 적은 횃불을 숨기면 보지 못한다
             && IsInViewDistance(target)
             && IsInViewAngle(target)
             && HasLineOfSight(target);
