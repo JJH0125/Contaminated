@@ -65,6 +65,15 @@ try {
     $buffers = @{}   # 날짜 → 덧붙일 내용
     $processed = [int]$state.lines
 
+    # 마지막으로 옮긴 글의 시각. 예전 상태 파일에는 없으므로 마지막 날짜의 다음 날 0시로 대신한다.
+    $lastTime = [datetime]::MinValue
+    if ($state.PSObject.Properties['lastTime']) { $lastTime = [datetime]$state.lastTime }
+    elseif ($state.lastDay) { $lastTime = ([datetime]$state.lastDay).AddDays(1) }
+
+    # 대화가 압축되거나 다시 열리면 기록 파일이 새로 쓰여 줄 수가 줄어든다.
+    # 그러면 줄 번호를 믿을 수 없으므로 처음부터 읽고, 이미 옮긴 시각까지는 건너뛴다.
+    if ($processed -gt $lines.Count) { $processed = 0 }
+
     for ($i = $processed; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if (-not $line.Trim()) { $processed = $i + 1; continue }
@@ -84,6 +93,8 @@ try {
         if (-not $text) { continue }
 
         $time = ([datetime]$o.timestamp).ToLocalTime()
+        if ($time -le $lastTime) { continue }
+        $lastTime = $time
         $day = $time.ToString('yyyy-MM-dd')
         $role = if ($isUser) { '나' } else { 'Claude' }
 
@@ -115,6 +126,7 @@ try {
     }
 
     $state.lines = $processed
+    $state | Add-Member -NotePropertyName lastTime -NotePropertyValue $lastTime.ToString('o') -Force
     [IO.File]::WriteAllText($statePath, ($state | ConvertTo-Json -Compress), $utf8)
 }
 catch {
