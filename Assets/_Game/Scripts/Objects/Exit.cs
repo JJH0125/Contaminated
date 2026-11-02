@@ -11,6 +11,9 @@ namespace Squad
         [SerializeField] private string promptMessage = "아직 열리지 않았군요...";
 
         private bool IsActive;
+
+        /// 열렸는가. 한 번 열리면 다시 닫히지 않는다.
+        public bool IsOpen => IsActive;
         private bool _playerInRange;
 
         void Start()
@@ -53,7 +56,7 @@ namespace Squad
             return (mask.value & (1 << layer)) != 0;
         }
 
-        /// 탈출 조건을 채우면 GameManager가 호출한다. (지금은 등록하자마자 연다)
+        /// 탈출 조건을 채우면 GameManager가 호출한다. (정해 둔 수의 모닥불을 켜면 연다. 한 번 열리면 닫히지 않는다)
         public void Activate()
         {
             IsActive = true;

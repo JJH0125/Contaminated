@@ -120,6 +120,20 @@ namespace Squad
         }
 
         /// <summary>
+        /// 시연용: position의 땅 위로 순간이동한다. 걷던 경로와 배회 목적지는 버린다.
+        /// (경로를 남겨 두면 옛 자리의 경로점으로 되돌아가려 한다)
+        /// </summary>
+        public void Warp(Vector3 position)
+        {
+            position.y = HeightAt(position);
+            transform.position = position;
+            _rigidbody.position = position;
+            _pendingPosition = null;
+            _path = null;
+            _hasWanderTarget = false;
+        }
+
+        /// <summary>
         /// 플레이어의 위치와 도착 판정을 측정하는 반경을 받아
         /// 적과 플레이어의 거리가 반경 안에 들어오면 true를 return.
         /// </summary>

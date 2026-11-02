@@ -26,7 +26,7 @@ namespace Squad
     ///   떼면    그 지점부터 같은 동작을 거꾸로(DrawTorch) 재생하고, 손이 주머니 지점을 다시 지나면 횃불을 켠다
     /// 그래서 넣다가 바로 떼거나 꺼내다가 다시 눌러도 팔이 튀지 않는다.
     /// 넣는 동작이 끝나면 팔은 다리처럼 걷기·뛰기·대기 동작을 그대로 따른다.
-    /// (PlayerHazmat 컨트롤러의 Hide Torch 레이어가 상체에만 이 동작을 입힌다)
+    /// (Player 컨트롤러의 Hide Torch 레이어가 상체에만 이 동작을 입힌다)
     /// 컨트롤러에 이 레이어가 없으면 모션 없이 횃불만 사라진다.
     ///
     /// 씬 구성:
@@ -85,7 +85,7 @@ namespace Squad
         // 팔이 움직이는 방향 (+1 넣는 중, -1 꺼내는 중, 0 넣고 꺼내는 동작을 하지 않음)
         private int _armDirection;
 
-        // 컨트롤러(PlayerHazmat)의 Hide Torch 레이어 안의 상태와 파라미터 이름
+        // 컨트롤러(Player)의 Hide Torch 레이어 안의 상태와 파라미터 이름
         private const string HideLayerName = "Hide Torch";
         private const string HideStateName = "HideTorch";
         private const string DrawStateName = "DrawTorch";
@@ -98,6 +98,19 @@ namespace Squad
         private bool _mustReleaseKey;
 
         public bool HasTorch => _torch != null;
+
+        /// 손에 든 횃불의 불빛 (없으면 null). 재의 적에게 잡히는 연출이 번쩍이게 할 때 쓴다.
+        public FireSource TorchFire => _torchFire;
+
+        /// <summary>
+        /// 횃불을 꺼 버린다. 재의 적에게 잡히는 연출의 마지막에 쓴다.
+        /// 게임 오버 뒤에는 플레이어가 새로 만들어지므로 되돌리지 않는다.
+        /// </summary>
+        public void PutOut()
+        {
+            if (HasTorch)
+                _torch.gameObject.SetActive(false);
+        }
 
         // 넣고 꺼내는 동작을 재생할 수 있는가. (컨트롤러에 Hide Torch 레이어와 HideTorch 클립이 있어야 한다)
         private bool CanAnimate => _animator != null && _hideLayer >= 0 && _hideClipLength > 0f;

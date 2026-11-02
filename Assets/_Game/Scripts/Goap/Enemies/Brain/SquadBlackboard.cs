@@ -4,13 +4,14 @@ using UnityEngine;
 namespace Squad
 {
     /// <summary>
-    /// Shared "squad memory" — the generalization of Half-Life's squad-leader
-    /// information relay. Any chaser's perception writes here; every chaser's
-    /// GOAP planner reads here. One sighting propagates to the whole squad.
+    /// 적들이 함께 아는 사실을 모아 두는 칠판. 씬에 하나만 있다.
+    ///   시야      누가 지금 플레이어를 보는가, 마지막으로 본 자리·방향·속도, 발견 사건 번호(spotCount)
+    ///   추격 겹침  함께 보는 적들의 순위(ChaseRank): 가장 가까운 적은 곧장, 나머지는 앞질러 간다
+    ///   수색 지도  발견 지점 둘레의 수색 지점들. 합류한 적이 하나씩 맡는다
+    ///   소리      마지막으로 들린 소리의 자리와 정보
     ///
-    /// This is a scene-level singleton (one squad). For multiple independent
-    /// squads, make it a regular component and give each chaser a reference
-    /// to its own squad's blackboard.
+    /// 알고 있다고 모두가 움직이지는 않는다. 추격은 직접 본 적만 하고(IsSeeingPlayerNow),
+    /// 다른 적은 포효(발견 신호)를 받아야 합류한다. 긴장 상태(경계)는 적마다 따로 가진다(ChaserAlert).
     /// </summary>
     public class SquadBlackboard : MonoBehaviour
     {        
@@ -53,6 +54,20 @@ namespace Squad
             public float ClaimTime;
             public bool Checked;
         }
+
+        /// <summary>수색 후보 하나와 그 점수. 시연 화면(F4)이 점수와 뽑혔는지를 보여 준다.</summary>
+        public struct SearchCandidate
+        {
+            public Vector3 Position;
+            public float Score;
+            // 발견 지점에서 가려 안 보이는 곳인가 (+1)
+            public bool Hidden;
+            // 수색 지점으로 뽑혔는가
+            public bool Chosen;
+        }
+        private readonly List<SearchCandidate> _searchCandidates = new();
+        /// 지금 수색 지도를 만들 때 살펴본 후보들 (둘레 3개 × 12방향 = 최대 36곳. 갈 수 없는 곳은 빠진다)
+        public IReadOnlyList<SearchCandidate> SearchCandidates => _searchCandidates;
 
         // 지금 수색 지도가 어느 사건의 것인가 (0이면 아직 없음)
         public int SearchPlanSpot { get; private set; }
@@ -97,11 +112,6 @@ namespace Squad
         // 조사가 완료된 오브젝트의 모음. 이곳에 담긴 오브젝트가 내는 소리는 무시한다.
         private readonly HashSet<GameObject> _investigateCompleted = new();
 
-        // 다중 추격자 전용 //
-        // 추격, 매복 등등의 역할을 나누고, 각 추격자들이 일제히 같은 행동을 하지 않도록 조율
-        // <(역할), (추격자 번호)> 타입의 Dictionary로 역할을 현재 수행 중인 추격자를 기록
-        private readonly Dictionary<string, int> _roleClaims = new();
-
         private void Awake()
         {
             // 기존에 있던 BlackBoard Instance 제거
@@ -133,7 +143,7 @@ namespace Squad
 
             Terrain terrain = Terrain.activeTerrain;
             Vector3 eye = Grounded(center, terrain) + Vector3.up * SearchEyeHeight;
-            var candidates = new List<(Vector3 position, float score)>();
+            var candidates = new List<SearchCandidate>();
             float angleOffset = Random.Range(0f, 360f);
 
             foreach (float ring in searchRings)
@@ -148,29 +158,39 @@ namespace Squad
 
                     float score = 0f;
                     Vector3 look = position + Vector3.up * SearchEyeHeight;
-                    if (Physics.Linecast(eye, look, searchCoverMask, QueryTriggerInteraction.Ignore))
+                    bool hidden = Physics.Linecast(eye, look, searchCoverMask, QueryTriggerInteraction.Ignore);
+                    if (hidden)
                         score += 1f;
                     if (fleeDirection.sqrMagnitude > 0.0001f)
                         score += Mathf.Max(0f, Vector3.Dot(direction, fleeDirection));
                     score -= ring * 0.01f;
                     score += Random.Range(0f, 0.1f);
-                    candidates.Add((position, score));
+                    candidates.Add(new SearchCandidate { Position = position, Score = score, Hidden = hidden });
                 }
             }
 
-            candidates.Sort((a, b) => b.score.CompareTo(a.score));
-            foreach ((Vector3 position, float _) in candidates)
+            candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
+            for (int i = 0; i < candidates.Count; i++)
             {
                 if (_searchPoints.Count >= searchPointCount)
                     break;
 
+                Vector3 position = candidates[i].Position;
                 bool tooClose = false;
                 foreach (SearchPoint point in _searchPoints)
                     if (FlatDistance(point.Position, position) < searchPointSpacing)
                         tooClose = true;
-                if (!tooClose)
-                    _searchPoints.Add(new SearchPoint { Position = position });
+                if (tooClose)
+                    continue;
+
+                _searchPoints.Add(new SearchPoint { Position = position });
+                SearchCandidate chosen = candidates[i];
+                chosen.Chosen = true;
+                candidates[i] = chosen;
             }
+
+            _searchCandidates.Clear();
+            _searchCandidates.AddRange(candidates);
         }
 
         /// <summary>
@@ -372,21 +392,5 @@ namespace Squad
             SoundSource = null;
         }
 
-        /// 다중 추격자 전용 ///
-        public bool TryClaimRole(string role, int chaserId)
-        {
-            // 역할을 선점한 다른 추격자가 이미 존재
-            if (_roleClaims.TryGetValue(role, out int owner) && owner != chaserId)
-                return false;
-            // 이 추격자에게 역할 부여
-            _roleClaims[role] = chaserId;
-            return true;
-        }
-
-        public void ReleaseRole(string role, int chaserId)
-        {
-            if (_roleClaims.TryGetValue(role, out int owner) && owner == chaserId)
-                _roleClaims.Remove(role);
-        }
     }
 }

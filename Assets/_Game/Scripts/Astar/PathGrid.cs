@@ -43,6 +43,11 @@ namespace Astar3D
         private int _gridSizeY;   // count along Z
 
         public int MaxSize => _gridSizeX * _gridSizeY;
+        // 격자 표시(PathGridDisplay)가 칸을 하나씩 읽는 데 쓴다.
+        public int SizeX => _gridSizeX;
+        public int SizeY => _gridSizeY;
+        public float NodeDiameter => _nodeDiameter;
+        public Node NodeAt(int x, int y) => _grid[x, y];
         public bool AllowDiagonal => allowDiagonal;
 
         private void Awake() => BuildGrid();

@@ -118,6 +118,9 @@ namespace Squad
     /// </summary>
     public static class GoapPlanner
     {
+        /// 마지막 Plan 호출에서 열린 목록에서 꺼내 살펴본 노드의 수 (계산량 확인용)
+        public static int LastExpanded { get; private set; }
+
         // PlanNode는 GoapPlanner에서만 쓰이는 클래스이기에 중첩으로 private로 선언
         private class PlanNode
         {
@@ -159,8 +162,10 @@ namespace Squad
 
             // 탐색 횟수 기록. 무한 루프 방지용.
             int guard = 0;
+            LastExpanded = 0;
             while (open.Count > 0 && guard++ < 500)
             {
+                LastExpanded++;
                 // Sort의 인자값으로 정렬하는 기준을 넘겼다
                 // (a, b)를 받아 CompareTo를 실행하고
                 // a가 b보다 작으면 b의 앞에, b보다 크면 b의 뒤에 놓는다

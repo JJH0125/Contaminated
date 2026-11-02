@@ -4,12 +4,19 @@ using UnityEngine;
 namespace Squad
 {
     /// <summary>
-    /// Actions for the three-goal chaser (catch / investigate sound / wander).
-    /// 적의 goal은 추격/소리 조사/배회 3가지
+    /// 적의 기본 행동 여섯 가지. 행동마다 실행 코드(Perform)가 달라 GoapAction을 상속한다.
+    /// (목표 부품을 끼우면 그 부품의 행동이 더해진다. 예: MoveToFire, Extinguish)
     ///
     /// 습격 : ReachPlayer 행동을 통해 도달 가능
     /// ReachPlayer의 전제조건 : playerVisible=true
     ///               효과     : playerCaught=true
+    ///               (여럿이 함께 보면 가장 가까운 적은 곧장, 나머지는 앞질러 간다)
+    ///
+    /// 발견 신호 조사 : MoveToSignal과 SearchSignalArea 행동을 차례로 행하여 도달 가능
+    /// MoveToSignal의 전제조건 : joinedSignal=true
+    ///                효과     : atSignalLocation=true
+    /// SearchSignalArea의 전제조건 : atSignalLocation=true
+    ///                    효과     : signalInvestigated=true
     /// 
     /// 소리 조사 : MoveToSound와 SerchSoundArea 행동을 차례로 행하여 도달 가능
     /// MoveToSound의 전제조건 : heardSound=true
@@ -20,6 +27,7 @@ namespace Squad
     /// 배회 : WanderStep을 통해 도달 가능
     /// WanderStep의 전제조건 : 없음
     ///              효과     : wandering=true
+    ///              (무리의 졸개는 우두머리를 따라가고, 불에 끌리는 적은 켜진 불 둘레로 간다)
     ///
     /// 각 행동의 Perform 함수를 통해 적이 실제로 이동하고, 이동이 끝나면 true를 return한다
     /// Planner는 추상적인 개념인 facts들 사이에서만 관여할 뿐이고,
@@ -105,8 +113,11 @@ namespace Squad
                 if (dimensions != null && !dimensions.CanDetectPlayer(ctx.Member))
                     return true;
 
+                // 재의 적은 달려들지 않고, 흩어졌다가 플레이어를 감싸며 눈앞에서 형체를 이룬다.
                 Jumpscare jumpscare = ctx.Self.GetComponent<Jumpscare>();
-                if (jumpscare != null)
+                if (ctx.Self.TryGetComponent(out AshJumpscare ashScare))
+                    ashScare.Play(ctx.Player);
+                else if (jumpscare != null)
                     jumpscare.Play(ctx.Player);
                 else
                     GameManager.Instance.GameOver();

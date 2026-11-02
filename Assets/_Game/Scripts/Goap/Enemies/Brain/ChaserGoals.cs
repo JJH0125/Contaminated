@@ -3,27 +3,15 @@ using System.Collections.Generic;
 namespace Squad
 {
     /// <summary>
-    /// The three goals for a horror-game chaser that CANNOT be fought:
+    /// 적의 기본 목표 네 가지. 목표는 실행 코드가 없는 데이터라 상속하지 않고 값만 채운다.
+    ///   CatchPlayer (100)        직접 본 플레이어를 잡는다 (playerCaught)
+    ///   InvestigateSignal (75)   발견 신호를 받고 합류해 수색한다 (signalInvestigated)
+    ///   InvestigateSound (50)    들은 소리의 자리를 조사한다 (soundInvestigated)
+    ///   Wander (1)               할 일이 없을 때 배회한다. 이 사실은 늘 거짓이라 언제나 마지막 선택지로 남는다
+    /// 우선순위 사이에 간격을 두어, 목표 부품(GoapModule)의 목표를 사이에 끼울 수 있다. (예: ExtinguishFire 60)
     ///
-    ///   1. CatchPlayer      — highest priority. Fires when the player is
-    ///                          detected (seen, or a fresh last-known position).
-    ///   2. InvestigateSound — middle priority. Fires when a sound (e.g. a
-    ///                          campfire being lit) has been reported
-    ///                          but the player isn't currently detected. The
-    ///                          chaser goes to the SOUND'S location to check it
-    ///                          out (interpretation A).
-    ///   3. Wander           — the fallback. Always achievable, lowest priority,
-    ///                          so it only runs when nothing else applies.
-    ///
-    /// There is deliberately NO "survive" goal: the enemy can't be beaten, so it
-    /// never retreats. This keeps the whole decision space to "how do I find and
-    /// reach the player", which is exactly the tension a stealth-horror chaser
-    /// should have.
-    ///
-    /// Goal selection (in SquadAgent.SelectGoal) picks the highest-priority goal
-    /// whose desired state is NOT already satisfied. Because Wander's desired
-    /// fact is never "already true", it's always available as a floor — but its
-    /// low priority means chase/investigate win whenever their facts are set.
+    /// 적은 싸워서 이길 수 없으므로 도망 목표는 일부러 두지 않았다.
+    /// 목표를 고르는 일은 HorrorChaserAgent.SelectGoal이 한다: 아직 이루지 않았고 고를 이유가 있는 것 중 우선순위가 가장 높은 것.
     /// </summary>
     public static class ChaserGoals
     {

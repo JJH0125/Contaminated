@@ -30,6 +30,19 @@ namespace Squad
 
         public bool IsLit { get; private set; }
 
+        /// 한 번이라도 켜진 적이 있는가. 다시 켤 때는 불씨가 남아 있어 더 빨리 붙는다.
+        public bool HasBeenLit { get; private set; }
+
+        /// 재의 적이 끈 정도 (0~1). 끊겨도 남아서, 같은 적이든 다른 적이든 이어서 끈다.
+        public float ExtinguishProgress { get; private set; }
+
+        /// 지금 누군가 끄고 있는가. (화면 알림이 읽는다)
+        public bool IsBeingExtinguished => IsLit && Time.time - _lastExtinguishTime < 0.5f;
+
+        private float _lastExtinguishTime = float.NegativeInfinity;
+        private ParticleSystem _ashSwirl;
+        private Vector3 _flameScale = Vector3.one;
+
         private FireSource _fire;
         private GameObject _flames;
         private ParticleSystem _smoke;
@@ -65,6 +78,9 @@ namespace Squad
             Transform flames = transform.Find(FlamesName);
             _flames = flames != null ? flames.gameObject : null;
             _smoke = CreateSmoke();
+            if (_flames != null)
+                _flameScale = _flames.transform.localScale;
+            _ashSwirl = CreateAshSwirl();
             CreateEmber();
         }
 
@@ -85,6 +101,8 @@ namespace Squad
                 return;
 
             SetLit(true);
+            HasBeenLit = true;
+            ExtinguishProgress = 0f;
             float burnTime = GameTuning.Instance.map.burnTime;
             if (_ring != null)
             {
@@ -107,6 +125,111 @@ namespace Squad
 
             if (GameManager.Instance != null)
                 GameManager.Instance.OnCampfireLit();
+        }
+
+        /// <summary>
+        /// 불을 seconds초만큼 끈다. 다 끄면 true. (재의 적의 "모닥불 끄기" 목표 부품이 매 프레임 부른다)
+        /// 꺼져 가는 동안 불꽃과 불빛이 줄어들고 검은 재가 맴돌아서, Real에서도 멀리서 보인다.
+        /// </summary>
+        public bool AddExtinguish(float seconds, float totalTime)
+        {
+            if (!IsLit)
+                return true;
+
+            _lastExtinguishTime = Time.time;
+            ExtinguishProgress = Mathf.Clamp01(ExtinguishProgress + seconds / Mathf.Max(totalTime, 0.01f));
+            if (ExtinguishProgress >= 1f)
+            {
+                Extinguish();
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 켜진 불을 바로 끈다.
+        /// 한 번 타서 사라진 덤불과 뿌리는 되살아나지 않으므로, 끈 불은 Real에서도 다시 켤 수 있다.
+        /// </summary>
+        public void Extinguish()
+        {
+            if (!IsLit)
+                return;
+
+            SetLit(false);
+            ExtinguishProgress = 0f;
+            FireAlertLabel.NotifyExtinguished();
+            if (GameManager.Instance != null)
+                GameManager.Instance.CheckExit();
+        }
+
+        private void Update()
+        {
+            // 꺼져 가는 만큼 불꽃과 불빛이 작아진다. 다시 켜면 되살아난다.
+            float strength = IsLit ? 1f - ExtinguishProgress * 0.8f : 1f;
+            if (_flames != null)
+                _flames.transform.localScale = _flameScale * strength;
+            if (_fire != null)
+                _fire.Strength = strength;
+
+            if (_ashSwirl != null)
+            {
+                bool swirling = IsBeingExtinguished;
+                if (swirling && !_ashSwirl.isEmitting)
+                {
+                    _ashSwirl.Play();
+                    // 화면 위쪽에 "모닥불이 꺼지고 있다"를 띄울 글자가 없으면 만든다.
+                    FireAlertLabel.EnsureExists();
+                }
+                else if (!swirling && _ashSwirl.isEmitting)
+                    _ashSwirl.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+        }
+
+        // 꺼져 가는 불 둘레를 맴돌며 높이 오르는 검은 재. 두 차원 모두에서 보인다.
+        private ParticleSystem CreateAshSwirl()
+        {
+            var swirlObject = new GameObject("Ash Swirl");
+            swirlObject.transform.SetParent(transform, false);
+            swirlObject.transform.localPosition = Vector3.up * 0.5f;
+            swirlObject.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+
+            var swirl = swirlObject.AddComponent<ParticleSystem>();
+            swirl.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            ParticleSystem.MainModule main = swirl.main;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(3f, 5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(1.5f, 3.5f);
+            main.startColor = new Color(0.03f, 0.03f, 0.035f, 0.85f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 120;
+
+            ParticleSystem.EmissionModule emission = swirl.emission;
+            emission.rateOverTime = 20f;
+
+            ParticleSystem.ShapeModule shape = swirl.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 3f;
+
+            // 불 둘레를 돌면서 오른다.
+            ParticleSystem.VelocityOverLifetimeModule velocity = swirl.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.orbitalX = 0f;
+            velocity.orbitalY = 0f;
+            velocity.orbitalZ = 1.2f;
+
+            ParticleSystem.ColorOverLifetimeModule color = swirl.colorOverLifetime;
+            color.enabled = true;
+            var fade = new Gradient();
+            fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                         new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            color.color = fade;
+
+            var swirlRenderer = swirlObject.GetComponent<ParticleSystemRenderer>();
+            swirlRenderer.sharedMaterial = AshEnemyBody.AshMaterial();
+            swirlRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return swirl;
         }
 
         private void SetLit(bool lit)

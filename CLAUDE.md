@@ -77,24 +77,27 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ---
 
-## 4. 현재 상태 (2026-10-23 기준)
+## 4. 현재 상태 (2026-11-02 기준)
 
 > 위 2·3장은 초기 설계 기록이라 파일 위치와 일부 내용이 지금과 다르다. 지금 상태는 이 장을 기준으로 본다.
 
 ### 스크립트 폴더 (`Assets/_Game/Scripts/`)
 | 폴더 | 내용 |
 |---|---|
-| `Core/` | `GameManager`, `StageLayout`(라운드마다 배치), **`GameTuning`**(수치 설정 에셋) |
-| `Goap/Basic/` | `Goap`(엔진), `SquadBlackboard`(공유 지식), `ChaserContext`(행동에 넘기는 문서) |
-| `Goap/SingleChaser/` | `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserLocomotion`, `ChaserAlert`(경계), `ChaserAnimator`, `EnemyEyes`, `Jumpscare` |
+| `Core/` | `GameManager`, **`GameTuning`**(수치 설정 에셋) |
+| `Core/Stage/` | 라운드 맵 구성: `StageLayout`(배치), `ZoneMap`(4구역), `BarrierBuilder`(나무 벽·관문·덤불 덮개·웅덩이), `CoverRockBuilder`(엄폐 바위), `RoundAtmosphere`(라운드별 밝기·안개) |
+| `Goap/` | **`Goap.cs` 하나 = 범용 GOAP 엔진**(이 게임의 fact/goal 이름을 모름) |
+| `Goap/Enemies/Brain/` | 판단: `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserContext`, `SquadBlackboard`(공유 지식), `ChaserAlert`(경계), `ChaserPack`(무리), `GoapModule`(끼웠다 빼는 목표 부품) |
+| `Goap/Enemies/Body/` | 몸과 연출: `ChaserLocomotion`(A* 이동), `ChaserAnimator`, `Jumpscare`, `AshEnemyBody`·`AshEnemyLight`·`AshWindSound`(재의 적) |
 | `Detection/` | `VisionCensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
-| `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), Fake 차원 화면 효과들 |
-| `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 등 |
-| `Objects/` | `Campfire`, `Torch`, `FireSource`, `Stone`(미끼 돌), `Exit` |
-| `Player/` | 이동, 카메라(`Follow`), 횃불·돌 들기, 숨소리, 발소리, 보호복 오염 |
-| `Audio/`, `UI/`, `Debugging/`, `Editor/`, `Astar/` | 이름 그대로 |
+| `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), `DimensionObstacle`(차원별 장애물), `DimensionTint`, Fake 화면 효과 |
+| `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 |
+| `Objects/` | `Campfire`, `FireSource`, `Torch`, `Stone`(미끼 돌), `Exit`, `ExitArch`(출구 덤불 아치), `RootLine`(뿌리), `BurnAway` |
+| `Player/` | 이동, 카메라(`Follow`, `FirstPersonView`), 횃불·돌 들기, 모닥불 켜기, 숨소리, 발소리, 보호복 오염 |
+| `Debugging/` | F1 재의 차원 관찰(시간 제한 없이 Fake에 머물고 재의 적 3마리를 둘레에 놓음), F2 깨끗한 화면, F4 GOAP 판단 표시(계획 실패·계획 시간·수색 후보 점수, F5 가까운 불 켜기), F6 두 겹 격자와 차원별 경로, F7 0.5배속, F8 멈춤, F9 다음 라운드, F10 계획 로그, 시연 씬 설정(`DemoScenario`), 경계 아이콘, 소리 반경 |
+| `Audio/`, `UI/`, `Editor/`, `Astar/` | 이름 그대로 |
 
-- 다중 추격자 데모(`SquadAgent.cs`, `Actions.cs`)는 **삭제됨** (Git 기록에는 남아 있음)
+- 다중 추격자 데모(`SquadAgent.cs`, `Actions.cs`), 발전기, `ChaserAgent`, `MapBuilder`, `EnemyEyes`, 랜드마크는 **삭제됨** (Git 기록에는 남아 있음)
 - **수치는 `Resources/GameTuning` 에셋 한 곳에서 조절한다** (소리 값만 `SoundLibrary`). 적은 차원별(Real/Fake)로 값을 따로 둔다
 
 ### ✅ 적 AI (단일 추격자를 여러 마리로)
@@ -107,16 +110,39 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
   - 아무도 `joinTimeout`(30초) 동안 플레이어를 못 보면 합류를 풀고 돌아간다
 - **발견 지점 수색 지도** (블랙보드): 사건마다 발견 지점 주변에 수색 지점들을 만든다(`EnsureSearchPlan`, 도망 방향 고려). 합류한 적은 아무도 맡지 않은 가장 가까운 지점을 맡고(`ClaimSearchPoint`) 확인하며, 지나가며 본 지점도 확인 처리된다(`MarkSearchPointsSeen`)
 - **추격 겹침**: 여러 적이 함께 볼 때 `ChaseRank`로 순위를 매긴다. 0위(가장 가까운 적)는 곧장 쫓고, 나머지는 `interceptLeadTime`(1.5초) 뒤 플레이어가 있을 자리로 좌우 `interceptSpacing`(6m)씩 벌려 앞질러 간다. 플레이어가 `interceptDirectRadius`(10m) 안이면 모두 곧장 달려든다
-- 목표 우선순위: `CatchPlayer`(100) > `InvestigateSignal`(75) > `InvestigateSound`(50) > `Wander`(1)
+- **계획이 안 나오는 목표는 건너뜀**: 우선순위가 높은 순으로 계획을 세워 보고 처음 계획이 나온 목표를 따른다(같으면 목록 순서). 예전에는 그 자리에 멈췄다
+- 목표 우선순위: `CatchPlayer`(100) > `InvestigateSignal`(75) > `ExtinguishFire`(60, 목표 부품) > `InvestigateSound`(50) > `Wander`(1)
+- **목표 부품(`GoapModule`)**: 목표와 행동을 담은 컴포넌트. 켜면 다음 계획부터 그 목표를 추구하고, 끄면 돌아간다. 적 코드는 고치지 않는다
+  - `ExtinguishFireGoal`: 켜진 모닥불을 10초에 걸쳐 끈다(진행도는 불에 남음). 3라운드부터 Fake 적만 켜진 채 시작. 출구가 열리면 고를 이유가 없어져 저절로 꺼짐
+  - 교수님 시연: 플레이 중 인스펙터에서 체크박스를 켜고, F4로 머리 위에 목표·계획·경계를 띄운다
+- **Real 적과 Fake 적의 차이**: Real은 3마리 무리 순찰·포효·합류, 시선 높이 5.5m. Fake는 각자 다니며 켜진 불로 몰려가고, 횃불을 든 플레이어만 보며(15m), 청각 1.75배, 포효 없음
 
 ### ✅ 차원
 - 어디서든 F 키로 이동. **재사용 대기 15초, Fake 체류 최대 8초**(지나면 Real로 튕겨 나옴), 도착 소리, 이동 직후 감지·잡기 유예
 - Fake에 들어가면 플레이어 자리에서 **오염의 물결**이 퍼져 땅·나무·바위에 얼룩이 드러남 (`FakeContaminationEffect` + 직접 만든 후처리 셰이더)
+- **차원별 장애물과 길찾기**: 격자 칸마다 Real/Fake 막힘을 따로 세고, 적은 자기 차원 기준으로 길을 찾는다. 장벽이 바뀌면 `PathGrid.Version`이 올라 적이 경로를 다시 찾는다
+- 1인칭(Fake 진입 시 전환)은 시험해 본 뒤 **꺼 둠** (`GameTuning > Dimension > Fake First Person`, F3으로는 켤 수 있음)
+
+### ✅ 맵과 라운드 (모든 라운드가 같은 맵, 라운드별 구성은 `GameTuning > Stage > Rounds`)
+- 봉우리 둘레 4구역(남·동·서·북 순으로 열림). 경계마다 높은 나무 줄 벽(시선 차단), 열린 구역끼리의 벽에는 열린 관문과 봉인된 관문
+- **탈출 조건**: 꺼진 모닥불을 정한 수만큼 켜면 출구가 열린다. 모닥불은 Real에서는 오염 덤불에 덮여 켤 수 없고 **Fake에서만 켤 수 있다**(E 1.5초, 횃불을 들어야 함)
+- 출구 앞 **덤불 아치**는 불을 켤 때마다 타서 듬성해지고, 다 켜면 열린다. Fake에서만 보이는 **뿌리**가 모닥불에서 아치와 관문으로 이어진다
+- 오염 웅덩이(Fake에서만 막음), 엄폐 바위(시선 차단), 라운드가 오를수록 어둡고 안개가 짙어짐
+
+### ✅ 재의 적 (Fake 적의 모습)
+- 원래 모델은 숨기고, 그 걷는 몸 표면에서 재 입자를 뿜어 사람 실루엣을 만든다. **응집도**(거리 × 경계 상한: Calm 0.5 / Suspicious 0.75 / Alerted 1)에 따라 흩어졌다 모인다
+- 횃불이 향하는 쪽에만 흰 결정 무늬가 드러남(`Custom/Ash Enemy`), 머리 앞 결정이 얼굴 자리. 다가올수록 코드로 만든 바람 소리가 커짐(`AshWindSound`)
+- **발각 순간**: 몸을 홱 돌리고 재가 적 쪽으로 빨려 들며 결정이 번쩍임. 숨 들이켜는 소리+유리 금 소리(`AshSounds`, 코드로 생성, 다른 적은 못 들음)
+- **잡을 때(`AshJumpscare`)**: 정지 0.2 → 흩어짐 0.3 → 감싸기 0.5(Force Field로 플레이어 둘레를 돌고, 화면 가장자리 오염 `ContaminationEdgeEffect.Surge`, 카메라 당기기) → 얼굴 0.3(카메라 앞에 결정, 횃불 번쩍) → 꺼짐 0.2. 시간은 `GameTuning > Ash Enemy`. Mixamo 동작은 `spotAnimation`/`embraceAnimation`에 상태 이름을 넣으면 재생
 
 ### ✅ 그 밖의 최근 변경
 - 미끼 돌(`Stone`, `StoneHolder`): 줍고 던져서 소리로 적을 유인. 줍기·던지기 애니메이션은 제거
 - 횃불 메커니즘 변경, 숨기기와 온기 게이지
 - 저장소: `CLAUDE.md`는 루트, 대화 기록 hook은 프로젝트 설정(`.claude/settings.json`) 하나, PC 전용 설정(`.claude/settings.local.json`)은 Git 제외
+
+### 시연 준비
+- 메뉴 **Tools > 시연 씬 만들기**: Game 씬을 복사해 `Scenes/Demo/`에 단계별 씬 7개 생성(Game 씬을 고치면 다시 실행). 시드 고정, 라운드 구성은 `StageTuning.RoundOverride`로 덮어씀(에셋은 그대로)
+- 씬 사용법, 예상 질문 답변, Real/Fake 적 비교는 `Docs/시연_준비.md`
 
 ### 결정한 것
 - **블랙보드 = 적들이 함께 아는 사실**(누가 보나, 마지막 위치·방향·속도, 수색 지도, 소리 정보) / **`ChaserAlert` = 적 각자의 긴장 상태** / **`ChaserContext` = 적 각자의 할 일 상태**(합류 여부, 추격 순위 등)
@@ -128,10 +154,9 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - `SoundEmitter`의 `GetComponentInParent<ChaserAlert>()?.RaiseAlert` → Unity 컴포넌트에는 `?.` 대신 `!= null` 확인 권장
 - `VisionCensor`가 시야 검사 때마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
 - 소리 정보(`HasSound` 등)는 여전히 블랙보드에 하나라, 소리를 **듣지 못한** 같은 차원 적도 (느린 속도로) 조사하러 감
-- 적 시야 레이캐스트가 지형을 장애물로 보는지 확인 필요 (`obstacleLayer`에 지형 레이어가 없으면 봉우리 너머가 보임)
 - 차원 이동 도착 소리가 감지 유예 중에도 바로 적에게 전달됨
-- 블랙보드의 `TryClaimRole`/`ReleaseRole`은 다중 추격자 데모 삭제 후 쓰는 곳이 없음
-- 2장(코드 구조)·`HorrorChaserAgent`/`ChaserGoals`의 영어 주석은 "세 목표" 시절 설명 그대로
+- 던진 돌이 차원을 구분하지 않아 다른 차원 전용 장애물(웅덩이, 덤불 덮개)의 보이지 않는 기둥에 부딪히고, 장애물 레이어(바위, 나무)는 뚫고 지나감
+- 2장(코드 구조)은 초기 설계 기록 그대로. 지금 구조는 4장의 폴더 표를 본다
 
 ---
 
@@ -158,4 +183,5 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 3. **놓친 자리 수색**: 직접 보던 적이 플레이어를 놓쳤을 때도 수색 지도를 쓰게 하면, 횃불·돌·차원 이동으로 추격이 순식간에 끝나는 문제가 줄어듦
 4. **차원 이동 도착 소리 조정**: 유예를 2초로 늘리고, 소리를 유예가 끝날 때 내는 안
 5. **차원별 벽**: 차원별 레이어·충돌, 오브젝트 보이기/숨기기, 차원별 길찾기 격자 (지형 분리는 그 뒤)
-6. **문서·코드 정리**: 2장 갱신, 오래된 영어 주석, `TryClaimRole`/`ReleaseRole` 정리 여부
+6. **AI 시각화 모드**: 영상·팜플렛·전시 대기 화면용. F4 판단 표시를 다듬고 경로·시야를 게임 화면에서 켜고 끄기
+7. **던진 돌 충돌 정리** (위 "알려진 문제")

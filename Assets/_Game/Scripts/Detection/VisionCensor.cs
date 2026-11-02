@@ -44,12 +44,15 @@ namespace Squad
         // 플레이어의 이동 담당(이동 속도를 읽는다)과, 이 적의 두뇌(포효를 시킨다)
         private Player _playerMover;
         private HorrorChaserAgent _agent;
+        // 재의 적이면 발각 순간의 반응을 몸이 맡는다 (없으면 null)
+        private AshEnemyBody _ashBody;
 
         void Start()
         {
             dimensionController = DimensionController.Instance;
             enemy = GetComponent<DimensionMember>();
             _agent = GetComponent<HorrorChaserAgent>();
+            _ashBody = GetComponent<AshEnemyBody>();
             if (player != null)
                 _playerMover = player.GetComponent<Player>();
         }
@@ -174,8 +177,14 @@ namespace Squad
             && HasLineOfSight(target);
 
             // 못 보다가 막 본 순간에만 발견 소리를 낸다. (보고 있는 동안 계속 울리지 않도록)
+            // 재의 적은 숨을 들이켜는 소리와 함께 재가 빨려 들고 결정이 번쩍인다.
             if (canSee && !visibleJustBefore)
-                PlaySpottedSound();
+            {
+                if (_ashBody != null)
+                    _ashBody.OnSpotted(target.position);
+                else
+                    PlaySpottedSound();
+            }
 
             if (canSee)
                 // 플레이어가 시야에 있으면, 매번 호출하여 그 위치를 업데이트하고 경계 상태를 Alerted로 격상

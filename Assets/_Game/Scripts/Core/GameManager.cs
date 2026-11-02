@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Squad
@@ -112,9 +113,36 @@ namespace Squad
 
         public void StartGame()
         {
+            // 시드를 고정해 두었으면 배치와 적의 무작위 선택이 매번 같게 나온다. (라운드마다 다른 값)
+            int seed = GameTuning.Instance.stage.Seed;
+            if (seed != 0)
+                Random.InitState(seed + CurrentRound * 7919);
+
             ChangeState(GameState.Playing);
             ClearExitAndCampfires();
             currentStage = Instantiate(stage, Vector3.zero, Quaternion.identity);
+        }
+
+        /// <summary>
+        /// 시연용: 지금 Stage를 치우고 round 라운드를 바로 시작한다. 타이틀에서도 부를 수 있다.
+        /// Stage는 프레임 끝에 사라지므로, 한 프레임 기다렸다가 새로 만든다.
+        /// (같은 프레임에 만들면 옛 Stage의 차원 컨트롤러·블랙보드가 아직 있어서 새것이 스스로를 지운다)
+        /// </summary>
+        public void StartAtRound(int round) => StartCoroutine(StartAtRoundRoutine(round));
+
+        private IEnumerator StartAtRoundRoutine(int round)
+        {
+            if (currentStage != null)
+            {
+                Destroy(currentStage);
+                currentStage = null;
+                ClearExitAndCampfires();
+                yield return null;
+            }
+
+            CurrentRound = Mathf.Clamp(round, 1, totalRounds);
+            RefreshStatus();
+            StartGame();
         }
 
         /// <summary>
