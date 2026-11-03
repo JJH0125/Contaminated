@@ -455,6 +455,13 @@ namespace Squad
                 Dimension dimension = member != null ? member.Dimension : Dimension.None;
                 EnemyTuning tuning = GameTuning.Instance.EnemyFor(member);
 
+                // 목표 부품(모닥불 끄기)을 붙인다. 라운드 구성이 허락하면 Fake 적만 켠 채로 시작하고,
+                // 나머지는 꺼 둔다. (플레이 중에 인스펙터에서 켜면 그 목표를 추구한다)
+                ExtinguishFireGoal extinguish = enemy.GetComponent<ExtinguishFireGoal>();
+                if (extinguish == null)
+                    extinguish = enemy.gameObject.AddComponent<ExtinguishFireGoal>();
+                extinguish.enabled = dimension == Dimension.Fake && _round.fakeExtinguish;
+
                 // Fake 적은 뼈대 모델 대신 재의 형체로 그린다.
                 if (dimension == Dimension.Fake && enemy.GetComponent<AshEnemyBody>() == null)
                     enemy.gameObject.AddComponent<AshEnemyBody>();

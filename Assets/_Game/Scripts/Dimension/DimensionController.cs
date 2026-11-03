@@ -56,9 +56,14 @@ namespace Squad
         public KeyCode ShiftKey => shiftKey;
         /// 다시 이동할 수 있을 때까지 남은 시간(초). 지금 이동할 수 있으면 0.
         public float CooldownRemaining => Mathf.Max(0f, _readyTime - Time.time);
-        /// Fake에 있을 때 Real로 튕겨 나오기까지 남은 시간(초). Real에 있으면 0.
+        /// Fake에 있을 때 Real로 튕겨 나오기까지 남은 시간(초). Real에 있거나 Fake에 계속 머무는 중이면 0.
         public float FakeTimeRemaining =>
-            player != null && player.myDimension == Dimension.Fake ? Mathf.Max(0f, _forceReturnTime - Time.time) : 0f;
+            !StayInFake && player != null && player.myDimension == Dimension.Fake ? Mathf.Max(0f, _forceReturnTime - Time.time) : 0f;
+
+        /// <summary>
+        /// 디버그(F1 재의 차원 관찰)용. 켜져 있으면 Fake에서 튕겨 나오지 않고, 차원 이동 키도 듣지 않는다.
+        /// </summary>
+        public bool StayInFake { get; set; }
 
         void Awake()
         {
@@ -89,6 +94,9 @@ namespace Squad
             if (Time.timeScale == 0f || player == null)
                 return;
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+                return;
+
+            if (StayInFake)
                 return;
 
             // Fake에 머물 수 있는 시간이 지나면 의지와 상관없이 Real로 튕겨 나온다.
@@ -154,6 +162,16 @@ namespace Squad
 
             // 도착한 차원의 적만 듣는다. (소리의 값에서 차원을 관통하지 않도록 정해 둔다)
             SoundEmitter.Emit(player.transform.position, SoundList.DimensionShift, enemyLayer, player.myDimension);
+        }
+
+        /// <summary>
+        /// 플레이어를 dimension으로 보낸다. 이미 그 차원이면 아무 일도 하지 않는다.
+        /// 키로 넘어간 것이 아니므로 재사용 대기는 새로 시작하지 않는다. (디버그용)
+        /// </summary>
+        public void ShiftTo(Dimension dimension)
+        {
+            if (player != null && player.myDimension != dimension)
+                ShiftPlayerDimension(false);
         }
 
         public void SwitchPlayerDimension()

@@ -94,6 +94,14 @@ namespace Squad
                 return;
             }
 
+            // 디버그로 재의 차원을 관찰하는 중이면 그것만 알린다.
+            if (controller.StayInFake)
+            {
+                _label.text = "재의 차원 관찰 중 (F1: 끝내기)";
+                _label.color = fakeStayColor;
+                return;
+            }
+
             // Fake에 있으면 언제 튕겨 나올지를 먼저 보여 준다.
             float fakeRemaining = controller.FakeTimeRemaining;
             if (fakeRemaining > 0f)

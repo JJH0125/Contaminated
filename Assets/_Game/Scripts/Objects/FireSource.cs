@@ -94,6 +94,9 @@ namespace Squad
             _light.range = lightRadius;
         }
 
+        /// 불빛의 세기 배율 (1: 그대로). 모닥불이 꺼져 가는 동안 줄어든다.
+        public float Strength { get; set; } = 1f;
+
         // 꺼 두면(꺼진 모닥불) 조명도 꺼지고 불빛 목록에서도 빠진다.
         private void OnEnable()
         {
@@ -113,7 +116,7 @@ namespace Squad
         {
             // PerlinNoise는 시간에 따라 부드럽게 변하는 0~1 값이라, 뚝뚝 끊기지 않고 일렁인다.
             float noise = Mathf.PerlinNoise(Time.time * flickerSpeed, _flickerOffset);
-            _light.intensity = lightIntensity * (1f + (noise - 0.5f) * 2f * flickerAmount);
+            _light.intensity = lightIntensity * Strength * (1f + (noise - 0.5f) * 2f * flickerAmount);
         }
     }
 }

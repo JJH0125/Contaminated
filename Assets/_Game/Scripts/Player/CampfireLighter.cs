@@ -87,7 +87,9 @@ namespace Squad
                 _locked = true;
             }
 
-            float holdTime = Mathf.Max(tuning.lightHoldTime, 0.01f);
+            // 한 번 켰다 꺼진 불은 불씨가 남아 있어 더 빨리 붙는다.
+            float relight = target.HasBeenLit ? GameTuning.Instance.ashEnemy.relightTimeScale : 1f;
+            float holdTime = Mathf.Max(tuning.lightHoldTime * relight, 0.01f);
             if (_held >= holdTime)
             {
                 target.Light();

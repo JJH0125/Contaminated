@@ -15,6 +15,8 @@ namespace Squad
     ///   횃불을 들면  게이지가 다 차기를 기다리지 않고 오염이 타서 걷힌다. 물러나는 경계가 주황빛으로 그을리고,
     ///                색 온도도 따뜻하게 돌아온다
     ///
+    /// 재의 적에게 잡힐 때는 연출(AshJumpscare)이 Surge를 0에서 1로 올려, 온기와 상관없이 오염이 빠르게 차오른다.
+    ///
     /// 화면 효과 자체는 ContaminationEdge(직접 만든 후처리 효과)가 그린다. 이 스크립트는 CctvNoiseEffect처럼
     /// 시작할 때 Volume을 코드로 하나 만들고, 그 효과의 세기만 조절한다.
     ///
@@ -36,6 +38,15 @@ namespace Squad
 
         private PostProcessVolume _volume;
         private ContaminationEdge _edge;
+
+        // 온기 게이지로 정한 값들. 화면에는 Surge와 비교해 큰 쪽을 그린다.
+        private float _chill, _fog, _coverage, _burn;
+
+        /// <summary>
+        /// 온기와 상관없이 오염을 덮는 정도 (0~1). 재의 적에게 잡히는 연출이 쓴다.
+        /// 0으로 돌리면 타서 걷히는 과정 없이 곧바로 원래대로 돌아온다.
+        /// </summary>
+        public static float Surge { get; set; }
 
         // 씬이 열릴 때마다 Main Camera에 이 효과를 붙인다.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -85,17 +96,22 @@ namespace Squad
             // 오염 결정은 게이지 절반 아래에서 자라기 시작한다.
             float targetCoverage = hiding ? Mathf.Clamp01((CrystalStart - warmth) / CrystalStart) : 0f;
 
-            _edge.chill.value = Mathf.MoveTowards(_edge.chill.value, targetChill,
+            _chill = Mathf.MoveTowards(_chill, targetChill,
                 (hiding ? 1f / Mathf.Max(chillTime, 0.01f) : burnAwaySpeed) * dt);
-            _edge.fog.value = Mathf.MoveTowards(_edge.fog.value, targetFog, (hiding ? 1f : burnAwaySpeed) * dt);
+            _fog = Mathf.MoveTowards(_fog, targetFog, (hiding ? 1f : burnAwaySpeed) * dt);
 
-            float coverage = _edge.coverage.value;
-            bool burning = targetCoverage < coverage;
-            _edge.coverage.value = Mathf.MoveTowards(coverage, targetCoverage, (burning ? burnAwaySpeed : growSpeed) * dt);
+            bool burning = targetCoverage < _coverage;
+            _coverage = Mathf.MoveTowards(_coverage, targetCoverage, (burning ? burnAwaySpeed : growSpeed) * dt);
 
             // 오염이 타서 걷히는 동안에만 경계가 그을린다.
-            float targetBurn = burning && !hiding && _edge.coverage.value > 0.01f ? 1f : 0f;
-            _edge.burn.value = Mathf.MoveTowards(_edge.burn.value, targetBurn, 4f * dt);
+            float targetBurn = burning && !hiding && _coverage > 0.01f ? 1f : 0f;
+            _burn = Mathf.MoveTowards(_burn, targetBurn, 4f * dt);
+
+            float surge = Surge;
+            _edge.chill.value = Mathf.Max(_chill, surge);
+            _edge.fog.value = Mathf.Max(_fog, surge * 0.7f);
+            _edge.coverage.value = Mathf.Max(_coverage, surge);
+            _edge.burn.value = surge > 0f ? 0f : _burn;
         }
 
         // 코드로 만든 Volume은 씬과 함께 저절로 정리되지 않으므로 직접 지운다.

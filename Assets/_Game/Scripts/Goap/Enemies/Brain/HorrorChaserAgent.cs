@@ -1,21 +1,26 @@
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Squad
 {
     /// <summary>
-    /// A horror-game chaser driven by GOAP with exactly three goals:
-    ///   CatchPlayer  (priority 100) — reach the player when detected
-    ///   InvestigateSound (50)       — walk to a heard sound and search it
-    ///   Wander (1)                  — fallback when there's nothing to chase
+    /// 적의 두뇌. 범용 GOAP 엔진(Goap.cs)을 이 게임에 맞게 쓰는 쪽이다.
     ///
-    /// The enemy cannot be fought, so there is no survive/retreat goal. Goal
-    /// selection each cycle picks the highest-priority goal whose desired fact
-    /// isn't already satisfied; the planner then chains actions to reach it.
+    /// 기본 목표 네 가지 (ChaserGoals):
+    ///   CatchPlayer (100)        직접 본 플레이어를 잡는다
+    ///   InvestigateSignal (75)   다른 적의 발견 신호(포효)를 받고 발견 지점 둘레를 나눠 수색한다
+    ///   InvestigateSound (50)    들은 소리의 자리로 가서 둘러본다
+    ///   Wander (1)               할 일이 없을 때 배회한다 (무리가 있으면 우두머리를 따라간다)
+    /// 여기에 목표 부품(GoapModule)을 끼우면 그 목표와 행동이 더해진다. (예: ExtinguishFire (60))
     ///
-    /// This reuses the exact same GoapPlanner (A* over world states) as the
-    /// squad demo — only the goal set and action list differ.
-    /// 
+    /// 0.4초마다 사실(WorldState)을 새로 모아, 아직 이루지 않았고 고를 이유가 있는 목표를 우선순위가 높은 순으로 놓고,
+    /// 플래너(상태공간 A*)가 그 목표까지의 행동을 이어 붙인다. 계획을 세울 수 없는 목표(필요한 행동이 없음)는 건너뛰고
+    /// 다음 목표로 넘어간다. 우선순위가 같으면 목록에 먼저 있는 목표(기본 목표 → 부품 목표 순)가 앞선다.
+    /// 적은 싸워서 이길 수 없으므로 도망 목표는 없다.
+    ///
     /// 이 스크립트를 오브젝트에 추가하면
     /// ChaserLocomotion도 자동으로 추가된다
     /// ChaserLocomotion이 있어야 작동하는 HorrorChaserAgent에 있어서
@@ -48,6 +53,28 @@ namespace Squad
         // 씬에 있는 모든 추격자. 포효할 때 받을 적을 고르는 데 쓴다.
         private static readonly List<HorrorChaserAgent> _all = new();
 
+        // ── 계획 통계 (시연에서 성능 질문에 숫자로 답하기 위한 것) ──
+        /// 켜면 고른 목표나 계획이 바뀔 때마다 콘솔에 남긴다. (F10)
+        public static bool LogPlans { get; set; }
+        /// 지금까지 계획을 세운 횟수, 걸린 시간의 합과 최대(ms)
+        public static int PlanCount { get; private set; }
+        public static double TotalPlanMilliseconds { get; private set; }
+        public static double MaxPlanMilliseconds { get; private set; }
+        public static void ResetPlanStats()
+        {
+            PlanCount = 0;
+            TotalPlanMilliseconds = 0;
+            MaxPlanMilliseconds = 0;
+        }
+
+        /// 이 적이 마지막으로 계획을 세우는 데 걸린 시간(ms)과 살펴본 노드 수
+        public double LastPlanMilliseconds { get; private set; }
+        public int LastPlanExpanded { get; private set; }
+        /// 마지막 계획에서 우선순위는 더 높았지만 계획을 세울 수 없어 건너뛴 목표들
+        public IReadOnlyList<string> FailedGoals => _failedGoals;
+        private readonly List<string> _failedGoals = new();
+        private string _lastLogged;
+
         public ChaserLocomotion Locomotion { get; private set; }
 
         /// 함께 순찰하는 무리. StageLayout이 라운드를 시작할 때 정해 준다. 혼자 다니면 null.
@@ -56,6 +83,23 @@ namespace Squad
         // Exposed for on-screen debug visualization (see the gizmo section).
         public string CurrentGoalName { get; private set; } = "-";
         public string CurrentActionName => _currentAction?.Name ?? "-";
+        public float CurrentGoalPriority { get; private set; }
+
+        /// 지금 계획의 행동들. 실행 중인 행동이 맨 앞이고 current가 true다. (판단 표시용)
+        public System.Collections.Generic.IEnumerable<(string name, bool current)> PlanSteps
+        {
+            get
+            {
+                if (_currentAction != null)
+                    yield return (_currentAction.Name, true);
+                if (_plan != null)
+                    foreach (GoapAction action in _plan)
+                        yield return (action.Name, false);
+            }
+        }
+
+        // 켜져 있는 목표 부품(GoapModule). 원래 목표·행동에 더해 계획에 쓴다.
+        private readonly List<GoapModule> _modules = new();
 
         private List<GoapAction> _actions;
         private List<Goal> _goals;
@@ -97,6 +141,22 @@ namespace Squad
             // Action과 Goal 불러오기
             _actions = ChaserActions.Build();
             _goals = ChaserGoals.Build();
+            RefreshModules();
+        }
+
+        /// <summary>
+        /// 켜져 있는 목표 부품을 다시 모으고, 곧바로 계획을 다시 세운다.
+        /// 부품이 켜지거나 꺼질 때 부품이 스스로 부른다. 그래서 플레이 중에 체크박스만 눌러도 행동이 바뀐다.
+        /// </summary>
+        public void RefreshModules()
+        {
+            _modules.Clear();
+            foreach (GoapModule module in GetComponents<GoapModule>())
+                if (module.isActiveAndEnabled)
+                    _modules.Add(module);
+
+            if (_ctx != null && _actions != null && isActiveAndEnabled)
+                ReplanNow();
         }
 
         private void OnEnable() => _all.Add(this);
@@ -210,18 +270,63 @@ namespace Squad
 
         private void Replan()
         {
-            WorldState state = BuildWorldState();
-            Goal goal = SelectGoal(state);
-            CurrentGoalName = goal?.Name ?? "-";
-            if (goal == null)
+            // 원래의 목표·행동에, 켜져 있는 목표 부품의 것을 더한다.
+            var goals = new List<Goal>(_goals);
+            var actions = new List<GoapAction>(_actions);
+            foreach (GoapModule module in _modules)
             {
-                _plan = null;
-                _currentAction = null;
-                return;
+                goals.Add(module.Goal);
+                actions.AddRange(module.Actions);
             }
 
-            _plan = GoapPlanner.Plan(_actions, state, goal, _ctx);
+            WorldState state = BuildWorldState();
+
+            // 우선순위가 높은 목표부터 계획을 세워 보고, 처음으로 계획이 나온 목표를 따른다.
+            Stopwatch watch = Stopwatch.StartNew();
+            _failedGoals.Clear();
+            Goal chosen = null;
+            Queue<GoapAction> plan = null;
+            int expanded = 0;
+            foreach (Goal candidate in RankGoals(state, goals))
+            {
+                plan = GoapPlanner.Plan(actions, state, candidate, _ctx);
+                expanded += GoapPlanner.LastExpanded;
+                if (plan != null)
+                {
+                    chosen = candidate;
+                    break;
+                }
+                _failedGoals.Add(candidate.Name);
+            }
+            watch.Stop();
+
+            LastPlanMilliseconds = watch.Elapsed.TotalMilliseconds;
+            LastPlanExpanded = expanded;
+            PlanCount++;
+            TotalPlanMilliseconds += LastPlanMilliseconds;
+            if (LastPlanMilliseconds > MaxPlanMilliseconds)
+                MaxPlanMilliseconds = LastPlanMilliseconds;
+
+            CurrentGoalName = chosen?.Name ?? "-";
+            CurrentGoalPriority = chosen?.Priority ?? 0f;
+            _plan = plan;
             DoNextAction();
+
+            if (LogPlans)
+                LogPlan();
+        }
+
+        // 고른 목표, 계획, 건너뛴 목표가 지난번과 다를 때만 남긴다. (0.4초마다 같은 줄이 쌓이지 않게)
+        private void LogPlan()
+        {
+            string steps = string.Join(" → ", PlanSteps.Select(step => step.name));
+            string failed = _failedGoals.Count > 0 ? string.Join(", ", _failedGoals) : "-";
+            string summary = $"목표 {CurrentGoalName}({CurrentGoalPriority}) | 계획 {(steps.Length > 0 ? steps : "-")} | 계획 실패로 건너뛴 목표 {failed}";
+            if (summary == _lastLogged)
+                return;
+
+            _lastLogged = summary;
+            Debug.Log($"[GOAP] {name}: {summary} | {LastPlanMilliseconds:0.000}ms, 살펴본 노드 {LastPlanExpanded}", this);
         }
 
         /// 현재 추격자 입장에서의 WorldState 생성
@@ -255,26 +360,23 @@ namespace Squad
             // Wander is always achievable; its fact starts false so the goal is
             // never "already satisfied" and thus always available as a floor.
             s.Facts["wandering"] = false;
+
+            // 목표 부품이 세계에서 읽어 온 사실
+            foreach (GoapModule module in _modules)
+                module.WriteFacts(s, _ctx);
             return s;
         }
 
-        /// <summary>달성하지 않은 Goal 중 가장 우선순위 높은 Goal 선택</summary>
-        private Goal SelectGoal(WorldState state)
+        /// <summary>
+        /// 달성하지 않았고 고를 이유가 있는 Goal들을 우선순위가 높은 순으로 돌려준다.
+        /// OrderByDescending은 같은 값끼리 원래 순서를 지키므로, 우선순위가 같으면 목록에 먼저 있는 Goal이 앞선다.
+        /// </summary>
+        private IEnumerable<Goal> RankGoals(WorldState state, List<Goal> goals)
         {
-            Goal best = null;
-            foreach (Goal g in _goals)
-            {
-                // 이미 이룬 Goal은 패스
-                if (state.Matches(g.Desired))
-                    continue;
-                // 선택할 이유가 없는 (도달 불가능한) Goal은 패스
-                if (!GoalIsRelevant(g, state))
-                    continue;
-                // 우선순위 비교하여 높은 우선순위의 Goal로 갱신
-                if (best == null || g.Priority > best.Priority)
-                    best = g;
-            }
-            return best;
+            return goals
+                // 이미 이룬 Goal과, 선택할 이유가 없는 (도달 불가능한) Goal은 뺀다
+                .Where(g => !state.Matches(g.Desired) && GoalIsRelevant(g, state))
+                .OrderByDescending(g => g.Priority);
         }
 
         /// <summary>
@@ -285,6 +387,11 @@ namespace Squad
         /// </summary>
         private bool GoalIsRelevant(Goal g, WorldState s)
         {
+            // 목표 부품의 목표는 부품이 판단한다.
+            foreach (GoapModule module in _modules)
+                if (module.Goal == g)
+                    return module.IsRelevant(s, _ctx);
+
             switch (g.Name)
             {
                 case "CatchPlayer":

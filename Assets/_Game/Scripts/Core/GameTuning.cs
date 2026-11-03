@@ -267,8 +267,8 @@ namespace Squad
         public float undetectableTime = 1f;
 
         [Header("Fake 차원의 1인칭 (시험 중)")]
-        [Tooltip("Fake에 들어가면 1인칭이 되고, Real로 돌아오면 쿼터뷰로 돌아온다. 끄면 Fake도 쿼터뷰다 (F3으로는 언제든 켤 수 있다)")]
-        public bool fakeFirstPerson = true;
+        [Tooltip("Fake에 들어가면 1인칭이 되고, Real로 돌아오면 쿼터뷰로 돌아온다. 시험해 본 뒤 꺼 두었다. 꺼도 F3으로는 언제든 켤 수 있다")]
+        public bool fakeFirstPerson = false;
         [Tooltip("쿼터뷰와 1인칭 사이를 옮겨 가는 데 걸리는 시간(초). 머리 쪽으로 빨려 들어가고 빠져나온다")]
         public float firstPersonBlendTime = 0.4f;
         [Tooltip("1인칭에서 마우스로 둘러보는 빠르기")]
@@ -418,6 +418,16 @@ namespace Squad
         public int totalRounds = 5;
         [Tooltip("출구를 처음부터 열어 둘지 (시험용). 끄면 정해 둔 수의 모닥불을 켜야 열린다")]
         public bool openExitAtStart = false;
+        [Tooltip("0이 아니면 라운드를 시작할 때마다 이 값으로 무작위를 고정한다. 같은 배치, 같은 장면이 매번 나온다 (시연용)")]
+        public int fixedSeed = 0;
+
+        /// 시연 씬(DemoScenario)이 잠시 덮어쓰는 라운드 구성과 시드. 에셋을 바꾸지 않으려고 따로 둔다.
+        /// RoundOverride가 null을 돌려주는 라운드는 원래 구성을 쓴다. 시드는 0이면 쓰지 않는다.
+        public static System.Func<int, RoundSetup> RoundOverride;
+        public static int SeedOverride;
+
+        /// 이번에 쓸 시드 (0이면 고정하지 않는다)
+        public int Seed => SeedOverride != 0 ? SeedOverride : fixedSeed;
 
         [Header("숲의 잎 줄이기 (라운드를 시작할 때 원래 숲을 솎아 낸다)")]
         [Tooltip("원래 숲의 풀과 덤불 중 남길 비율. 잎이 넓은 것부터 치운다. 1이면 그대로다")]
@@ -432,17 +442,20 @@ namespace Squad
                              lightIntensity = 1f, fogDensity = 1f, fakeContamination = 0.5f, realContamination = 0f },
             new RoundSetup { openZones = 3, campfires = 3, firesToOpenExit = 3, realEnemies = 3, fakeEnemies = 2, contaminationPools = 5,
                              lightIntensity = 0.8f, fogDensity = 1.2f, fakeContamination = 0.6f, realContamination = 0f },
-            new RoundSetup { openZones = 4, campfires = 3, firesToOpenExit = 3, realEnemies = 5, fakeEnemies = 3, contaminationPools = 6,
+            new RoundSetup { openZones = 4, campfires = 3, firesToOpenExit = 3, realEnemies = 5, fakeExtinguish = true, fakeEnemies = 3, contaminationPools = 6,
                              lightIntensity = 0.6f, fogDensity = 1.45f, fakeContamination = 0.7f, realContamination = 0.15f },
-            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeExtinguish = true, fakeEnemies = 4, contaminationPools = 8,
                              lightIntensity = 0.45f, fogDensity = 1.7f, fakeContamination = 0.8f, realContamination = 0.25f },
-            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeExtinguish = true, fakeEnemies = 4, contaminationPools = 8,
                              lightIntensity = 0.4f, fogDensity = 1.8f, fakeContamination = 0.85f, realContamination = 0.3f },
         };
 
         /// <summary>그 라운드의 구성. 목록보다 큰 라운드는 마지막 구성을 쓴다.</summary>
         public RoundSetup Round(int round)
         {
+            RoundSetup overridden = RoundOverride?.Invoke(round);
+            if (overridden != null)
+                return overridden;
             if (rounds == null || rounds.Length == 0)
                 return new RoundSetup();
             return rounds[Mathf.Clamp(round - 1, 0, rounds.Length - 1)];
@@ -487,6 +500,8 @@ namespace Squad
         public int realEnemies = 3;
         [Tooltip("Fake 차원 적의 수. 0이면 Fake에는 적이 없다")]
         public int fakeEnemies = 3;
+        [Tooltip("Fake 적이 켜진 모닥불을 끄러 가는가. 출구가 열린 뒤에는 끄지 않는다")]
+        public bool fakeExtinguish = false;
         [Tooltip("Fake에서만 길을 막는 오염 웅덩이의 수")]
         public int contaminationPools = 5;
 
@@ -654,7 +669,7 @@ namespace Squad
         [Tooltip("노이즈 알갱이의 크기")]
         [Range(0.3f, 3f)] public float grainSize = 1.4f;
         [Tooltip("화면이 휘는 정도. 클수록 크게 일렁인다")]
-        [Range(0f, 60f)] public float wobbleAmount = 5f;
+        [Range(0f, 60f)] public float wobbleAmount = 18f;
         [Tooltip("일렁이는 빠르기")]
         public float wobbleSpeed = 1.5f;
         [Tooltip("가장자리에서 색이 번지는 정도")]
@@ -679,14 +694,107 @@ namespace Squad
         public float wobble = 0.2f;
         [Tooltip("재의 색. 어두울수록 빛을 먹는 것처럼 보인다")]
         public Color ashColor = new Color(0.02f, 0.02f, 0.025f, 0.8f);
-        [Tooltip("몸에서 1초에 피어오르는 재 알갱이의 수")]
-        public float smokeRate = 35f;
+        [Header("응집도 (0: 흩어짐, 1: 사람 모양으로 다 모임)")]
+        [Tooltip("이 거리(m) 안이면 다 모인다 (경계 상태가 허락하는 만큼)")]
+        public float coherenceNear = 5f;
+        [Tooltip("이 거리(m)보다 멀면 다 흩어진다")]
+        public float coherenceFar = 35f;
+        [Tooltip("Calm일 때 모일 수 있는 최대치. 가까워도 반쯤만 모여서, 조용히 지나칠 수 있다는 신호가 된다")]
+        [Range(0f, 1f)] public float calmCoherence = 0.5f;
+        [Tooltip("Suspicious일 때 모일 수 있는 최대치. Alerted면 끝까지 모인다")]
+        [Range(0f, 1f)] public float suspiciousCoherence = 0.75f;
+        [Tooltip("1초에 모여드는 정도. Alerted면 두 배로 빠르다")]
+        public float gatherSpeed = 0.5f;
+        [Tooltip("1초에 흩어지는 정도")]
+        public float scatterSpeed = 0.35f;
+        [Tooltip("다 흩어졌을 때 재가 몸에서 퍼져 있는 거리(m)")]
+        public float scatterRadius = 7f;
+        [Tooltip("흩어졌을 때 1초에 뿜는 재 알갱이의 수")]
+        public float ashRateScattered = 25f;
+        [Tooltip("다 모였을 때 1초에 뿜는 재 알갱이의 수. 많을수록 사람 모양이 또렷하다")]
+        public float ashRateGathered = 120f;
+        [Tooltip("다 모인 채 쫓다가 이 거리(m) 안이 되면 재가 몸보다 먼저 플레이어 쪽으로 쏟아진다")]
+        public float lungeDistance = 12f;
+        [Tooltip("쏟아지는 재의 빠르기(m/s)")]
+        public float lungeSpeed = 8f;
+
+        [Header("소리 (코드로 만든 바람과 재 소리)")]
+        [Tooltip("다 모였을 때 바람 소리의 크기. 효과음 볼륨에 곱해진다")]
+        [Range(0f, 1f)] public float windVolume = 0.9f;
+        [Tooltip("이 거리(m) 안이면 가장 크게 들린다")]
+        public float windMinDistance = 3f;
+        [Tooltip("이 거리(m)부터는 들리지 않는다")]
+        public float windMaxDistance = 40f;
         [Tooltip("발밑에 1초에 깔리는 재 알갱이의 수")]
         public float trailRate = 14f;
         [Tooltip("지나간 자리에 재가 남아 있는 시간(초)")]
         public float trailTime = 5f;
         [Tooltip("결정이 평소에 빛나는 정도. 어느 쪽을 보는지 알 수 있게 얼굴 자리를 겨우 보이게 한다")]
         [Range(0f, 1f)] public float crystalGlow = 0.15f;
+
+        [Header("발각되는 순간 (숨을 들이켜는 바람 + 유리 금 가는 소리. 다른 재의 적은 부르지 않는다)")]
+        [Tooltip("주변의 재가 적 쪽으로 확 빨려 드는 시간(초)")]
+        public float spotPullTime = 0.35f;
+        [Tooltip("빨려 드는 힘. 클수록 세게 빨려 든다")]
+        public float spotPullStrength = 45f;
+        [Tooltip("결정이 번쩍였다가 평소 밝기로 돌아오는 시간(초)")]
+        public float flashTime = 0.5f;
+        [Tooltip("발각 순간 숨겨 둔 몸에 재생할 Animator 상태 이름(고개를 홱 돌리는 동작). 비워 두거나 없는 이름이면 몸을 플레이어 쪽으로 홱 돌리기만 한다. " +
+                 "그 상태에는 Idle로 돌아가는 전환(Has Exit Time)이 있어야 한다")]
+        public string spotAnimation = "";
+
+        [Header("잡을 때의 연출: 정지 → 흩어짐 → 감싸기 → 얼굴 → 꺼짐 (합계 1.5초 안쪽)")]
+        [Tooltip("1. 정지: 모든 소리가 끊기고 화면이 멈추는 시간(초)")]
+        public float freezeTime = 0.2f;
+        [Tooltip("2. 흩어짐: 터지듯 흩어지는 시간(초)")]
+        public float scatterTime = 0.3f;
+        [Tooltip("3. 감싸기: 재가 플레이어 둘레를 돌며 화면 가장자리부터 덮어 오는 시간(초)")]
+        public float wrapTime = 0.5f;
+        [Tooltip("4. 얼굴: 카메라 앞에 결정이 모여 번쩍이는 시간(초)")]
+        public float faceTime = 0.3f;
+        [Tooltip("5. 꺼짐: 횃불이 꺼지고 화면이 검게 잠기는 시간(초). 그 뒤 게임 오버")]
+        public float blackoutTime = 0.2f;
+        [Tooltip("흩어질 때 숨겨 둔 몸에 재생할 Animator 상태 이름(팔을 넓게 벌렸다가 앞으로 껴안듯 오므리는 동작). " +
+                 "재가 그 몸 표면에서 나오므로 팔 모양으로 벌어진다. 비워 두거나 없는 이름이면 재생하지 않는다")]
+        public string embraceAnimation = "";
+        [Tooltip("흩어질 때 한 번에 터져 나오는 재 알갱이의 수")]
+        public int burstCount = 300;
+        [Tooltip("흩어지는 재의 빠르기(m/s)")]
+        public float burstSpeed = 14f;
+        [Tooltip("감쌀 때 재가 생겨나는 둘레의 반지름(m)")]
+        public float wrapRadius = 8f;
+        [Tooltip("감싸는 동안 1초에 더하는 재 알갱이의 수")]
+        public float wrapEmitRate = 600f;
+        [Tooltip("재를 플레이어 쪽으로 끌어당기는 힘")]
+        public float wrapPull = 20f;
+        [Tooltip("재가 플레이어 둘레를 도는 빠르기")]
+        public float wrapSwirl = 4f;
+        [Tooltip("이 반지름(m) 안에서는 끌어당기지 않는다. 재가 플레이어 몸에 뭉치지 않고 둘레를 돈다")]
+        public float wrapInner = 2.5f;
+        [Tooltip("감싸기부터 카메라를 플레이어에게서 이 거리(m)까지 확 당긴다. 평소 쿼터뷰 거리는 Camera > Distance")]
+        public float cameraPullDistance = 10f;
+        [Tooltip("카메라를 당기는 데 걸리는 시간(초). 짧을수록 컷처럼 보인다")]
+        public float cameraPullTime = 0.15f;
+        [Tooltip("당긴 카메라가 바라보는 높이(m). 플레이어 발밑 기준")]
+        public float cameraFocusHeight = 3f;
+        [Tooltip("얼굴이 맺히는 자리: 카메라 앞 거리(m)")]
+        public float faceDistance = 2.5f;
+        [Tooltip("얼굴의 크기 배율")]
+        public float faceSize = 1.3f;
+        [Tooltip("얼굴이 맺힐 때 횃불이 번쩍이는 밝기 배율")]
+        public float torchFlash = 4f;
+        [Tooltip("연출 소리의 크기. 효과음 볼륨에 곱해진다")]
+        [Range(0f, 1f)] public float scareVolume = 1f;
+
+        [Header("모닥불 끄기 (라운드 구성의 fakeExtinguish가 켜진 라운드에서)")]
+        [Tooltip("모닥불 끄기 목표의 우선순위. 소리 조사(50)보다 높고 추격(100)보다 낮다. 끄던 중 플레이어를 보면 쫓는다")]
+        public float extinguishPriority = 60f;
+        [Tooltip("불에서 이 거리(m) 안에 오면 끌 수 있다")]
+        public float extinguishReach = 5f;
+        [Tooltip("불을 끄는 데 걸리는 시간(초). 알림을 보고 갈지 말지 판단할 시간이다. 끊겨도 진행도는 불에 남는다")]
+        public float extinguishTime = 10f;
+        [Tooltip("한 번 켰다 꺼진 불을 다시 켤 때 누르는 시간의 배율. 불씨가 남아 있어 더 빨리 붙는다")]
+        [Range(0.1f, 1f)] public float relightTimeScale = 0.5f;
 
         [Header("색과 빛")]
         [Tooltip("몸의 색. 빛을 받지 않고 늘 이 색이다")]

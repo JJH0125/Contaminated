@@ -5,13 +5,12 @@ namespace Squad
 {
     /// <summary>
     /// 적의 머리 위에 현재 판단 상태를 기호로 띄운다.
-    ///   소리 조사 중(InvestigateSound) → ?
-    ///   추격 중(CatchPlayer)           → !
-    ///   배회 중(Wander)               → 표시 없음
+    ///   조사 중(InvestigateSound, InvestigateSignal) → ?
+    ///   추격 중(CatchPlayer)                         → !
+    ///   배회 중(Wander) 등 그 밖의 목표               → 표시 없음
     ///
-    /// 블랙보드의 경계 수준이 아니라 "이 적의 현재 목표"를 기준으로 한다.
-    /// 경계 수준은 모든 적이 공유하므로, 그걸 쓰면 한 적이 발견했을 때
-    /// 모든 적(다른 차원의 적까지) 머리 위에 !가 뜨게 된다.
+    /// 경계 상태(ChaserAlert)가 아니라 "이 적의 현재 목표"를 기준으로 한다.
+    /// 경계는 소리만 들어도 오르므로, 기호가 실제로 하고 있는 일과 어긋나지 않게 목표를 본다.
     ///
     /// 씬 구성:
     ///   적 오브젝트 아래에 GameObject → 3D Object → Text - TextMeshPro 를 만들고
@@ -78,6 +77,7 @@ namespace Squad
             switch (goal)
             {
                 case "InvestigateSound":
+                case "InvestigateSignal":
                     _label.text = investigateSymbol;
                     _label.color = investigateColor;
                     _popTimer = popDuration;
