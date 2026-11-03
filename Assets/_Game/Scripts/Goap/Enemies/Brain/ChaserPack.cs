@@ -24,9 +24,13 @@ namespace Squad
         /// 영역의 중심. 배회할 곳은 이 둘레에서 고른다.
         public Vector3 Center { get; private set; }
 
-        public ChaserPack(Vector3 center)
+        // 0보다 크면 영역 반지름을 이 값으로 고정하고 중심을 옮기지 않는다. (시연 씬에서 적을 한자리에 묶어 둘 때)
+        private readonly float _fixedRadius;
+
+        public ChaserPack(Vector3 center, float fixedRadius = 0f)
         {
             Center = center;
+            _fixedRadius = fixedRadius;
         }
 
         public void Add(HorrorChaserAgent member)
@@ -42,13 +46,15 @@ namespace Squad
         /// </summary>
         public bool TryChooseSpot(ChaserContext ctx, EnemyTuning tuning, out Vector3 spot)
         {
-            CountLeg(ctx, tuning);
+            if (_fixedRadius <= 0f)
+                CountLeg(ctx, tuning);
 
+            float radius = _fixedRadius > 0f ? _fixedRadius : tuning.packTerritoryRadius;
             spot = Vector3.zero;
             float bestGap = -1f;
             for (int i = 0; i < 12; i++)
             {
-                Vector2 r = Random.insideUnitCircle * tuning.packTerritoryRadius;
+                Vector2 r = Random.insideUnitCircle * radius;
                 Vector3 candidate = Center + new Vector3(r.x, 0f, r.y);
                 if (!ctx.Locomotion.IsWalkable(candidate))
                     continue;

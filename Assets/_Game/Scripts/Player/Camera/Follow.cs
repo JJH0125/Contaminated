@@ -17,7 +17,7 @@ public class Follow : MonoBehaviour
     // 수치는 GameTuning 에셋(Resources/GameTuning)에서 읽는다.
     private float pitch => Squad.GameTuning.Instance.camera.pitch;
     private float yaw => Squad.GameTuning.Instance.camera.yaw;
-    private float distance => Squad.GameTuning.Instance.camera.distance;
+    private float distance => Squad.GameTuning.Instance.camera.Distance;
     private float lookAheadTime => Squad.GameTuning.Instance.camera.lookAheadTime;
     private float maxLookAhead => Squad.GameTuning.Instance.camera.maxLookAhead;
     private float lookAheadSmoothTime => Squad.GameTuning.Instance.camera.lookAheadSmoothTime;

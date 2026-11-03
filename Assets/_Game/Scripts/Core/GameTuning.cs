@@ -247,6 +247,11 @@ namespace Squad
         public float yaw = 45f;
         [Tooltip("플레이어와 카메라 사이의 거리(m)")]
         public float distance = 22f;
+
+        /// 시연 씬(DemoScenario)이 잠시 덮어쓰는 카메라 거리. 0이면 distance를 쓴다. 에셋을 바꾸지 않으려고 따로 둔다.
+        public static float DistanceOverride;
+        /// 이번에 쓸 카메라 거리
+        public float Distance => DistanceOverride > 0f ? DistanceOverride : distance;
         [Tooltip("가는 방향으로 카메라를 얼마나 앞서 보낼지(초). 플레이어가 이 시간 뒤에 있을 자리를 비춘다. 0이면 밀지 않는다")]
         public float lookAheadTime = 0.25f;
         [Tooltip("카메라를 앞으로 미는 거리의 최댓값(m)")]

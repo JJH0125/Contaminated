@@ -29,13 +29,16 @@ namespace Squad
         private const KeyCode ToggleKey = KeyCode.F4;
         private const KeyCode LightFireKey = KeyCode.F5;
         // 적 오브젝트 위치에서 글을 띄울 높이(m)
-        private const float LabelHeight = 15f;
+        private const float LabelHeight = 9f;
+        // 화면 가장자리와 적 판단 상자 사이의 여백(px)
+        private const float ScreenMargin = 8f;
 
         /// 지금 판단을 띄우고 있는가. (시연 씬이 처음부터 켜 둘 때 쓴다)
         public static bool Showing { get; set; }
 
         private GUIStyle _style;
         private GUIStyle _smallStyle;
+        private GUIStyle _agentStyle;
         private readonly StringBuilder _text = new();
         private readonly Dictionary<int, string> _names = new();
 
@@ -100,13 +103,31 @@ namespace Squad
                 alignment = TextAnchor.MiddleCenter,
             };
 
+            // 적 판단 상자: 짙은 바탕에 큰 글씨. 밝은 땅 위에서도 읽히게 한다.
+            if (_agentStyle == null)
+            {
+                var background = new Texture2D(1, 1);
+                background.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.8f));
+                background.Apply();
+                _agentStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 17,
+                    richText = true,
+                    alignment = TextAnchor.UpperLeft,
+                    padding = new RectOffset(10, 10, 6, 8),
+                    normal = { textColor = Color.white, background = background },
+                };
+            }
+
             double average = HorrorChaserAgent.PlanCount > 0
                 ? HorrorChaserAgent.TotalPlanMilliseconds / HorrorChaserAgent.PlanCount
                 : 0;
-            GUI.Label(new Rect(12f, 60f, 620f, 52f),
+            // 오른쪽 위의 시연 안내와 겹치지 않도록 글 길이만큼만 차지한다.
+            string summary =
                 "<color=yellow>GOAP 판단 표시 (F4로 끄기, F5: 가까운 불 켜기)</color>\n" +
-                $"계획 {HorrorChaserAgent.PlanCount}번 · 평균 {average:0.000}ms · 최대 {HorrorChaserAgent.MaxPlanMilliseconds:0.000}ms",
-                _style);
+                $"계획 {HorrorChaserAgent.PlanCount}번 · 평균 {average:0.000}ms · 최대 {HorrorChaserAgent.MaxPlanMilliseconds:0.000}ms";
+            Vector2 summarySize = _style.CalcSize(new GUIContent(summary));
+            GUI.Label(new Rect(12f, 60f, summarySize.x, summarySize.y), summary, _style);
 
             Camera cam = Camera.main;
             HorrorChaserAgent[] agents = FindObjectsOfType<HorrorChaserAgent>();
@@ -126,34 +147,48 @@ namespace Squad
             if (screen.z <= 0f)
                 return;
 
+            // 목표 줄은 경계에 따라 색을 바꾸고 크게 쓴다. 멀리서도 "지금 무엇을 하려는지"가 먼저 보이게.
+            ChaserAlert alert = agent.GetComponent<ChaserAlert>();
+            string alertColor = alert == null ? "#ffffff"
+                : alert.Level == AlertLevel.Alerted ? "#ff5050"
+                : alert.Level == AlertLevel.Suspicious ? "#ffd040"
+                : "#70e070";
+
             _text.Clear();
-            _text.Append(agent.name).Append('\n');
-            _text.Append("목표: <b>").Append(agent.CurrentGoalName).Append("</b> (").Append(agent.CurrentGoalPriority).Append(")\n");
+            _text.Append("<size=13><color=#b0b0b0>").Append(agent.name).Append("</color></size>\n");
+            _text.Append("<size=22><b><color=").Append(alertColor).Append('>').Append(agent.CurrentGoalName)
+                 .Append("</color></b></size> <size=15>(").Append(agent.CurrentGoalPriority).Append(")</size>\n");
             _text.Append("계획: ");
             bool first = true;
             foreach ((string step, bool current) in agent.PlanSteps)
             {
                 if (!first)
                     _text.Append(" → ");
-                _text.Append(current ? "<color=yellow>" + step + "</color>" : step);
+                _text.Append(current ? "<b><color=yellow>" + step + "</color></b>" : step);
                 first = false;
             }
             if (first)
                 _text.Append("-");
 
             if (agent.FailedGoals.Count > 0)
-                _text.Append("\n<color=#ff6060>계획 실패: ").Append(string.Join(", ", agent.FailedGoals)).Append("</color>");
+                _text.Append("\n<b><color=#ff6060>계획 실패: ").Append(string.Join(", ", agent.FailedGoals)).Append("</color></b>");
 
-            ChaserAlert alert = agent.GetComponent<ChaserAlert>();
             if (alert != null)
-                _text.Append("\n경계: ").Append(alert.Level);
-            _text.Append($"\n<size=12>계획 {agent.LastPlanMilliseconds:0.000}ms · 노드 {agent.LastPlanExpanded}</size>");
+                _text.Append("\n경계: <color=").Append(alertColor).Append('>').Append(alert.Level).Append("</color>");
+            _text.Append($"\n<size=13><color=#b0b0b0>계획 {agent.LastPlanMilliseconds:0.000}ms · 노드 {agent.LastPlanExpanded}</color></size>");
 
             string label = _text.ToString();
-            Vector2 size = _style.CalcSize(new GUIContent(label));
+            Vector2 size = _agentStyle.CalcSize(new GUIContent(label));
             // 화면 좌표는 아래가 0이고, GUI 좌표는 위가 0이다.
             var rect = new Rect(screen.x - size.x * 0.5f, Screen.height - screen.y - size.y, size.x, size.y);
-            GUI.Box(rect, label, _style);
+
+            // 적이 화면 밖으로 나가도 상자는 가장자리에 붙여 계속 보여 준다.
+            float x = Mathf.Clamp(rect.x, ScreenMargin, Mathf.Max(ScreenMargin, Screen.width - size.x - ScreenMargin));
+            float y = Mathf.Clamp(rect.y, ScreenMargin, Mathf.Max(ScreenMargin, Screen.height - size.y - ScreenMargin));
+            if (!Mathf.Approximately(x, rect.x) || !Mathf.Approximately(y, rect.y))
+                label = "<size=13><color=#b0b0b0>(화면 밖)</color></size> " + label;
+            rect.position = new Vector2(x, y);
+            GUI.Box(rect, label, _agentStyle);
         }
 
         // 수색 후보와 점수, 뽑힌 지점을 누가 맡았는지

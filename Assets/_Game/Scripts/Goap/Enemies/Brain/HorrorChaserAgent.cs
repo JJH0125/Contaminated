@@ -54,7 +54,7 @@ namespace Squad
         private static readonly List<HorrorChaserAgent> _all = new();
 
         // ── 계획 통계 (시연에서 성능 질문에 숫자로 답하기 위한 것) ──
-        /// 켜면 고른 목표나 계획이 바뀔 때마다 콘솔에 남긴다. (F10)
+        /// 켜면 고른 목표나 계획이 바뀔 때마다 콘솔에 남긴다. (F11)
         public static bool LogPlans { get; set; }
         /// 지금까지 계획을 세운 횟수, 걸린 시간의 합과 최대(ms)
         public static int PlanCount { get; private set; }
@@ -78,7 +78,18 @@ namespace Squad
         public ChaserLocomotion Locomotion { get; private set; }
 
         /// 함께 순찰하는 무리. StageLayout이 라운드를 시작할 때 정해 준다. 혼자 다니면 null.
-        public ChaserPack Pack { get; set; }
+        /// 시작한 뒤에 바꿔도(시연 씬) 다음 배회부터 새 무리의 영역을 쓴다.
+        public ChaserPack Pack
+        {
+            get => _pack;
+            set
+            {
+                _pack = value;
+                if (_ctx != null)
+                    _ctx.Pack = value;
+            }
+        }
+        private ChaserPack _pack;
 
         // Exposed for on-screen debug visualization (see the gizmo section).
         public string CurrentGoalName { get; private set; } = "-";

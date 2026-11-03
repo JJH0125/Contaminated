@@ -39,6 +39,11 @@ namespace Squad
         [SerializeField] private int seed = 1234;
         [Tooltip("2~4단계에서 적을 플레이어 앞 이 거리(m)에 세운다")]
         [SerializeField] private float enemyDistance = 30f;
+        [Tooltip("2~4단계에서 적이 배회하는 영역의 반지름(m). 세운 자리 둘레만 돌아서, 건드리기 전에는 플레이어에게 오지 않는다.\n" +
+                 "적 거리 - 이 값이 Real 시야(22m)보다 커야 시작하자마자 들키지 않는다")]
+        [SerializeField] private float enemyTerritoryRadius = 6f;
+        [Tooltip("2~4단계의 카메라 거리(m). 앞에 세운 적과 그 머리 위 판단 표시가 함께 화면에 들어오도록 원래(22m)보다 멀리 뺀다")]
+        [SerializeField] private float closeStepCameraDistance = 40f;
 
         private RoundSetup _setup;
         private DimensionController _preparedFor;
@@ -52,6 +57,9 @@ namespace Squad
             _setup = BuildRound();
             StageTuning.RoundOverride = round => round == 1 ? _setup : null;
             StageTuning.SeedOverride = seed;
+            CameraTuning.DistanceOverride = step is DemoStep.GoapBasics or DemoStep.GoalToggle or DemoStep.PlanFailure
+                ? closeStepCameraDistance
+                : 0f;
             HorrorChaserAgent.ResetPlanStats();
         }
 
@@ -59,6 +67,7 @@ namespace Squad
         {
             StageTuning.RoundOverride = null;
             StageTuning.SeedOverride = 0;
+            CameraTuning.DistanceOverride = 0f;
         }
 
         // GameManager가 타이틀 화면을 띄운 다음 프레임에 바로 라운드를 시작한다.
@@ -154,11 +163,17 @@ namespace Squad
             if (step is not (DemoStep.GoapBasics or DemoStep.GoalToggle or DemoStep.PlanFailure))
                 return;
 
-            // 적을 플레이어 앞, 같은 구역 안의 걸을 수 있는 자리에 세운다.
+            // 적을 플레이어 앞, 같은 구역 안의 걸을 수 있는 자리에 세우고, 그 둘레만 배회하게 묶어 둔다.
+            // (원래 무리의 영역은 처음 놓인 자리 둘레라서, 그대로 두면 그쪽으로 돌아가다 플레이어와 마주친다)
             Vector3 origin = player.transform.position;
             foreach (HorrorChaserAgent enemy in FindObjectsOfType<HorrorChaserAgent>())
                 if (TryFindSpotInFront(origin, out Vector3 spot))
+                {
                     enemy.Locomotion.Warp(spot);
+                    var territory = new ChaserPack(spot, enemyTerritoryRadius);
+                    territory.Add(enemy);
+                    enemy.Pack = territory;
+                }
 
             if (step == DemoStep.GoapBasics)
                 return;
@@ -222,7 +237,7 @@ namespace Squad
             string text = Guide();
             if (UsesFireKeys)
                 text += "\n\n" + FireState();
-            text += $"\n<size=12><color=#909090>시드 {seed} 고정 · F7 느리게 · F8 멈춤 · F9 다음 라운드 · F10 계획 로그</color></size>";
+            text += $"\n<size=12><color=#909090>시드 {seed} 고정 · F7 느리게 · F8 멈춤 · F9 다음 라운드 · F11 계획 로그</color></size>";
 
             const float Width = 470f;
             float height = _style.CalcHeight(new GUIContent(text), Width);

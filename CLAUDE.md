@@ -94,7 +94,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 | `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 |
 | `Objects/` | `Campfire`, `FireSource`, `Torch`, `Stone`(미끼 돌), `Exit`, `ExitArch`(출구 덤불 아치), `RootLine`(뿌리), `BurnAway` |
 | `Player/` | 이동, 카메라(`Follow`, `FirstPersonView`), 횃불·돌 들기, 모닥불 켜기, 숨소리, 발소리, 보호복 오염 |
-| `Debugging/` | F1 재의 차원 관찰(시간 제한 없이 Fake에 머물고 재의 적 3마리를 둘레에 놓음), F2 깨끗한 화면, F4 GOAP 판단 표시(계획 실패·계획 시간·수색 후보 점수, F5 가까운 불 켜기), F6 두 겹 격자와 차원별 경로, F7 0.5배속, F8 멈춤, F9 다음 라운드, F10 계획 로그, 시연 씬 설정(`DemoScenario`), 경계 아이콘, 소리 반경 |
+| `Debugging/` | F1 재의 차원 관찰(시간 제한 없이 Fake에 머물고 재의 적 3마리를 둘레에 놓음), F2 깨끗한 화면, F4 GOAP 판단 표시(계획 실패·계획 시간·수색 후보 점수, F5 가까운 불 켜기), F6 두 겹 격자와 차원별 경로, F7 0.5배속, F8 멈춤, F9 다음 라운드, F11 계획 로그(F10은 Recorder 녹화 키), 시연 씬 설정(`DemoScenario`), 경계 아이콘, 소리 반경 |
 | `Audio/`, `UI/`, `Editor/`, `Astar/` | 이름 그대로 |
 
 - 다중 추격자 데모(`SquadAgent.cs`, `Actions.cs`), 발전기, `ChaserAgent`, `MapBuilder`, `EnemyEyes`, 랜드마크는 **삭제됨** (Git 기록에는 남아 있음)
@@ -144,6 +144,11 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 ### 시연 준비
 - 메뉴 **Tools > 시연 씬 만들기**: Game 씬을 복사해 `Scenes/Demo/`에 단계별 씬 7개 생성(Game 씬을 고치면 다시 실행). 시드 고정, 라운드 구성은 `StageTuning.RoundOverride`로 덮어씀(에셋은 그대로)
 - 씬 사용법, 예상 질문 답변, Real/Fake 적 비교는 `Docs/시연_준비.md`
+- 2~4번 씬: 적을 앞 30m에 세우고 그 둘레 6m만 배회하게 묶음(`ChaserPack`의 고정 영역, `Enemy Territory Radius`), 카메라는 40m로 뺌(`CameraTuning.DistanceOverride`, `Close Step Camera Distance`)
+- F4 적 판단 상자: 짙은 바탕, 목표 이름을 경계 색(초록·노랑·빨강)으로 크게, 화면 밖이면 가장자리에 붙임
+- 계획 로그는 **F11** (F10은 Unity Recorder의 Quick Recording 키). Recorder 녹화가 인코더 오류로 실패하면 소리가 녹화 쪽에 묶여 안 들림 → 에디터를 다시 켠다. 백업 영상은 OBS나 Win+G 권장
+- 코드 지도(기능별 파일·메서드, 호출 흐름 5개, 정리 필요 목록)는 `Docs/CodeMap.md`
+- `Scenes/Demo/`의 시연 씬(23MB)은 메뉴로 다시 만들 수 있어 Git에 올리지 않음
 
 ### 결정한 것
 - **블랙보드 = 적들이 함께 아는 사실**(누가 보나, 마지막 위치·방향·속도, 수색 지도, 소리 정보) / **`ChaserAlert` = 적 각자의 긴장 상태** / **`ChaserContext` = 적 각자의 할 일 상태**(합류 여부, 추격 순위 등)
