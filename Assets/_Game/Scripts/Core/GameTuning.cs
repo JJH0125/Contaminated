@@ -307,10 +307,16 @@ namespace Squad
         public float interceptDirectRadius = 10f;
 
         [Header("배회 (평소에 다니는 모습)")]
-        [Tooltip("몇 마리씩 무리 지어 다니는가. 1이면 각자 다닌다. 무리의 첫 번째가 목적지를 정하고 나머지는 그 둘레로 따라간다")]
+        [Tooltip("몇 마리씩 무리를 짓는가. 1이면 각자 다닌다. 무리는 영역만 함께 쓰고 몸은 떨어져 다닌다 (ChaserPack)")]
         [Range(1, 6)] public int packSize = 1;
-        [Tooltip("무리가 따라갈 때 우두머리의 목적지에서 벌어지는 거리(m)")]
-        public float packSpread = 7f;
+        [Tooltip("무리의 영역 반지름(m). 무리원은 배회할 곳을 무리의 중심에서 이 거리 안에서 고른다")]
+        public float packTerritoryRadius = 35f;
+        [Tooltip("무리원끼리 떨어지는 거리(m). 다른 무리원이 있는 곳과 가는 곳에서 이만큼 넘게 떨어진 자리를 고른다")]
+        public float packSeparation = 15f;
+        [Tooltip("무리원들이 배회를 이 횟수만큼 마칠 때마다 무리의 중심을 옮긴다. 0이면 중심이 시작 자리에 머문다")]
+        public int packDriftLegs = 6;
+        [Tooltip("무리의 중심을 한 번에 옮기는 거리(m)")]
+        public float packDriftDistance = 25f;
         [Tooltip("켜진 모닥불이 있을 때, 배회할 곳을 그 불 둘레로 고를 확률 (0~1). 0이면 불에 끌리지 않는다")]
         [Range(0f, 1f)] public float fireAttraction = 0f;
         [Tooltip("불 둘레로 갈 때 불에서 이 거리(m) 안의 자리를 고른다")]

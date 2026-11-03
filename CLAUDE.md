@@ -88,7 +88,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 | `Core/Stage/` | 라운드 맵 구성: `StageLayout`(배치), `ZoneMap`(4구역), `BarrierBuilder`(나무 벽·관문·덤불 덮개·웅덩이), `CoverRockBuilder`(엄폐 바위), `RoundAtmosphere`(라운드별 밝기·안개) |
 | `Goap/` | **`Goap.cs` 하나 = 범용 GOAP 엔진**(이 게임의 fact/goal 이름을 모름) |
 | `Goap/Enemies/Brain/` | 판단: `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserContext`, `SquadBlackboard`(공유 지식), `ChaserAlert`(경계), `ChaserPack`(무리), `GoapModule`(끼웠다 빼는 목표 부품) |
-| `Goap/Enemies/Body/` | 몸과 연출: `ChaserLocomotion`(A* 이동), `ChaserAnimator`, `Jumpscare`, `AshEnemyBody`·`AshEnemyLight`·`AshWindSound`(재의 적) |
+| `Goap/Enemies/Body/` | 몸과 연출: `ChaserLocomotion`(A* 이동), `ChaserAnimator`, `Jumpscare`, `Ash/`(재의 적 5개: `AshEnemyBody`·`AshEnemyLight`·`AshJumpscare`·`AshSounds`·`AshWindSound`) |
 | `Detection/` | `VisionCensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
 | `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), `DimensionObstacle`(차원별 장애물), `DimensionTint`, Fake 화면 효과 |
 | `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 |
@@ -116,6 +116,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
   - `ExtinguishFireGoal`: 켜진 모닥불을 10초에 걸쳐 끈다(진행도는 불에 남음). 3라운드부터 Fake 적만 켜진 채 시작. 출구가 열리면 고를 이유가 없어져 저절로 꺼짐
   - 교수님 시연: 플레이 중 인스펙터에서 체크박스를 켜고, F4로 머리 위에 목표·계획·경계를 띄운다
 - **Real 적과 Fake 적의 차이**: Real은 3마리 무리 순찰·포효·합류, 시선 높이 5.5m. Fake는 각자 다니며 켜진 불로 몰려가고, 횃불을 든 플레이어만 보며(15m), 청각 1.75배, 포효 없음
+- **느슨한 무리 (`ChaserPack`)**: Real 무리는 한 덩어리로 붙어 다니지 않고 영역만 함께 쓴다. 배회할 곳은 무리 중심에서 `packTerritoryRadius`(35m) 안, 다른 무리원이 있는 곳·가는 곳에서 `packSeparation`(15m) 넘게 떨어진 자리. 무리원들이 배회를 `packDriftLegs`(6)번 마칠 때마다 중심이 `packDriftDistance`(25m)씩 옮겨 가서 영역 자체가 떠돈다. 우두머리 개념은 없앰. 관문 지기는 관문 위치가 고정이라 오히려 예측 가능해져서 넣지 않기로 함
 
 ### ✅ 차원
 - 어디서든 F 키로 이동. **재사용 대기 15초, Fake 체류 최대 8초**(지나면 Real로 튕겨 나옴), 도착 소리, 이동 직후 감지·잡기 유예

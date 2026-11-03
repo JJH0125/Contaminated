@@ -23,7 +23,7 @@ namespace Squad
     ///      관문 잇기        봉인된 관문마다 가장 가까운 모닥불과 잇고, 그 불에서 관문까지도 뿌리를 뻗는다.
     ///                      그 불을 켜면 관문이 타서 열려 봉우리 비탈의 지름길이 생긴다
     ///   6. 적              열린 구역에서, 플레이어와 떨어진 곳. 덮개나 웅덩이 위에는 놓지 않는다
-    ///                      무리 지어 다니는 차원(Real)의 적은 packSize마리씩 무리를 짜서 우두머리 곁에 함께 놓는다
+    ///                      무리 지어 다니는 차원(Real)의 적은 packSize마리씩 무리를 짜서, 무리의 영역 안에 서로 떨어뜨려 놓는다
     ///   7. 돌              열린 구역 곳곳
     ///
     /// 무작위 자리는 "뽑아 보고, 조건에 안 맞으면 다시 뽑는" 방식으로 정한다.
@@ -447,8 +447,9 @@ namespace Squad
 
             // 적의 높이는 여기서 정하지 않는다. 이 뒤에 실행되는 ChaserLocomotion의 Awake가
             // 자기 설정값(heightAboveGround)으로 땅 위에 올라서므로, 여기서는 땅에 놓기만 한다.
-            // 무리 지어 다니는 차원의 적은 packSize마리씩 무리를 짜고, 우두머리를 먼저 놓은 뒤 졸개를 그 곁에 놓는다.
-            var packs = new Dictionary<Dimension, (ChaserPack pack, Transform leader, int count)>();
+            // 무리 지어 다니는 차원의 적은 packSize마리씩 무리를 짠다. 첫 적을 놓은 자리가 무리 영역의 첫 중심이 되고,
+            // 나머지는 그 영역 안에서 먼저 놓은 무리원들과 떨어진 자리에 놓는다.
+            var packs = new Dictionary<Dimension, (ChaserPack pack, List<Vector3> spots, int count)>();
             foreach (HorrorChaserAgent enemy in GetEnemyCopies())
             {
                 DimensionMember member = enemy.GetComponent<DimensionMember>();
@@ -472,31 +473,40 @@ namespace Squad
                     continue;
                 }
 
-                // 지금 무리가 없거나 다 찼으면 이 적이 새 무리의 우두머리가 된다.
+                // 지금 무리가 없거나 다 찼으면 이 적이 새 무리를 시작한다. 이 적의 자리가 영역의 첫 중심이다.
                 if (!packs.TryGetValue(dimension, out var current) || current.count >= tuning.packSize)
                 {
-                    current = (new ChaserPack(), enemy.transform, 0);
                     PlaceAwayFromPlayer(enemy.transform, playerSpot, minDistance, 0f);
+                    current = (new ChaserPack(enemy.transform.position), new List<Vector3>(), 0);
                 }
                 else
                 {
-                    PlaceNear(enemy.transform, current.leader.position, tuning.packSpread, playerSpot, minDistance * 0.5f);
+                    PlaceInTerritory(enemy.transform, current.pack.Center, current.spots, tuning, playerSpot, minDistance * 0.5f);
                 }
 
+                current.spots.Add(enemy.transform.position);
                 current.pack.Add(enemy);
                 enemy.Pack = current.pack;
-                packs[dimension] = (current.pack, current.leader, current.count + 1);
+                packs[dimension] = (current.pack, current.spots, current.count + 1);
             }
         }
 
-        // anchor(우두머리) 곁, spread 안팎의 자리에 놓는다. 자리가 없으면 혼자 놓는다.
-        private void PlaceNear(Transform target, Vector3 anchor, float spread, Vector3 playerSpot, float minPlayerDistance)
+        // 무리의 영역(center 둘레 packTerritoryRadius) 안에서, 먼저 놓은 무리원(taken)과 packSeparation 넘게 떨어진 자리에 놓는다.
+        // 그런 자리가 없으면 거리 두기만 빼고 영역 안에, 그래도 없으면 무리와 상관없이 놓는다.
+        private void PlaceInTerritory(Transform target, Vector3 center, List<Vector3> taken, EnemyTuning tuning,
+                                      Vector3 playerSpot, float minPlayerDistance)
         {
-            for (int i = 0; i < MaxTries; i++)
+            for (int pass = 0; pass < 2; pass++)
             {
-                Vector3 spot = anchor + ZoneMap.Direction(Random.Range(0f, 360f)) * Random.Range(spread * 0.5f, spread * 1.5f);
-                if (IsUsable(spot) && FlatDistance(spot, playerSpot) >= minPlayerDistance)
+                float separation = pass == 0 ? tuning.packSeparation : 0f;
+                for (int i = 0; i < MaxTries; i++)
                 {
+                    Vector2 r = Random.insideUnitCircle * tuning.packTerritoryRadius;
+                    Vector3 spot = center + new Vector3(r.x, 0f, r.y);
+                    if (!IsUsable(spot) || FlatDistance(spot, playerSpot) < minPlayerDistance)
+                        continue;
+                    if (taken.Exists(other => FlatDistance(spot, other) < separation))
+                        continue;
                     PlaceOnGround(target, spot, 0f);
                     return;
                 }

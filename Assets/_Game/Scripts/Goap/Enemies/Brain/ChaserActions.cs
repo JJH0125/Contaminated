@@ -27,7 +27,7 @@ namespace Squad
     /// 배회 : WanderStep을 통해 도달 가능
     /// WanderStep의 전제조건 : 없음
     ///              효과     : wandering=true
-    ///              (무리의 졸개는 우두머리를 따라가고, 불에 끌리는 적은 켜진 불 둘레로 간다)
+    ///              (무리가 있으면 무리의 영역 안에서 서로 떨어진 자리로 가고, 불에 끌리는 적은 켜진 불 둘레로 간다)
     ///
     /// 각 행동의 Perform 함수를 통해 적이 실제로 이동하고, 이동이 끝나면 true를 return한다
     /// Planner는 추상적인 개념인 facts들 사이에서만 관여할 뿐이고,
@@ -426,7 +426,7 @@ namespace Squad
         /// <summary>
         /// 다음에 배회할 곳을 고른다. 아무것도 정하지 않으면 혼자 다닐 때처럼 지금 자리 둘레의 무작위 자리로 간다.
         ///   켜진 불에 끌림   켜진 모닥불이 있으면 정해 둔 확률(fireAttraction)로 그 불 둘레로 간다 (Fake 적)
-        ///   무리를 따라감   무리의 졸개는 우두머리의 목적지 둘레에서 자기 몫의 자리로 간다 (Real 적)
+        ///   무리의 영역     무리가 있으면 무리의 영역 안에서, 다른 무리원과 떨어진 자리로 간다 (Real 적, ChaserPack)
         /// </summary>
         private static void ChooseWanderTarget(ChaserContext ctx)
         {
@@ -438,25 +438,8 @@ namespace Squad
                 return;
             }
 
-            ChaserPack pack = ctx.Pack;
-            HorrorChaserAgent leader = pack != null ? pack.Leader : null;
-            if (leader == null || leader.transform == ctx.Self)
-                return;
-
-            // 우두머리가 가는 곳(없으면 우두머리가 있는 곳) 둘레에서, 졸개마다 다른 방향의 자리를 맡는다.
-            Vector3 center = leader.Locomotion.HasWanderTarget ? leader.Locomotion.WanderTarget : leader.transform.position;
-            int slot = Mathf.Max(1, pack.SlotOf(ctx.Self.GetComponent<HorrorChaserAgent>()));
-            for (int i = 0; i < 6; i++)
-            {
-                float angle = slot * 137.5f + i * 45f + Random.Range(-20f, 20f);
-                Vector3 spot = center + ZoneMap.Direction(angle) * tuning.packSpread;
-                if (ctx.Locomotion.IsWalkable(spot))
-                {
-                    ctx.Locomotion.SetWanderTarget(spot);
-                    return;
-                }
-            }
-            ctx.Locomotion.SetWanderTarget(center);
+            if (ctx.Pack != null && ctx.Pack.TryChooseSpot(ctx, tuning, out Vector3 packSpot))
+                ctx.Locomotion.SetWanderTarget(packSpot);
         }
 
         // 켜진 모닥불 하나를 골라 그 둘레의 걸을 수 있는 자리를 찾는다.

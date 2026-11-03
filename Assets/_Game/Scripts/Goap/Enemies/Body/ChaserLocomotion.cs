@@ -228,7 +228,7 @@ namespace Squad
         /// </summary>
         public void ClearWanderTarget() => _hasWanderTarget = false;
 
-        /// 배회할 곳이 정해져 있는가, 그리고 그곳. (무리의 졸개가 우두머리의 목적지를 읽는다)
+        /// 배회할 곳이 정해져 있는가, 그리고 그곳. (무리가 다른 무리원의 목적지를 피해 자리를 고를 때 읽는다)
         public bool HasWanderTarget => _hasWanderTarget;
         public Vector3 WanderTarget => _wanderTarget;
 
