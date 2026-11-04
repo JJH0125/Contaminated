@@ -49,14 +49,15 @@ namespace Squad
         // 꺼진 불에 남은 불씨. 켜지면 불꽃이 대신한다. (FireSource와 달리 플레이어를 드러내지 않는다)
         private Light _ember;
         private ParticleSystem _emberSparks;
-        private DimensionObstacle _ring;
+        // 이 불을 덮은 덤불 덮개 (Real에서만 막음)
+        private DimensionObstacle _cover;
         // 이 불을 켜면 열리는 관문 (Real에서만 막힌 덤불)
         private readonly List<DimensionObstacle> _gates = new();
         // 이 불에서 출구와 관문으로 뻗은 뿌리
         private readonly List<RootLine> _roots = new();
 
         /// <summary>StageLayout이 이 불을 덮은 덤불을 넘겨준다. 불이 붙으면 덤불이 타서 사라진다.</summary>
-        public void Seal(DimensionObstacle ring) => _ring = ring;
+        public void Seal(DimensionObstacle cover) => _cover = cover;
 
         /// <summary>StageLayout이 이 불을 켜면 열릴 관문을 넘겨준다.</summary>
         public void LinkGate(DimensionObstacle gate)
@@ -104,10 +105,10 @@ namespace Squad
             HasBeenLit = true;
             ExtinguishProgress = 0f;
             float burnTime = GameTuning.Instance.map.burnTime;
-            if (_ring != null)
+            if (_cover != null)
             {
-                _ring.Open();
-                BurnAway.Play(_ring.gameObject, burnTime);
+                _cover.Open();
+                BurnAway.Play(_cover.gameObject, burnTime);
             }
             foreach (DimensionObstacle gate in _gates)
             {

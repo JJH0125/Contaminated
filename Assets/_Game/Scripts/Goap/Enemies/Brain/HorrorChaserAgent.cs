@@ -353,23 +353,22 @@ namespace Squad
             var bb = _ctx.Blackboard;
             var s = new WorldState();
 
-            // Catch-goal facts.
+            // 플레이어를 잡는 목표 관련 사실.
             s.Facts["playerVisible"] = bb.IsSeeingPlayerNow(enemy);
             s.Facts["playerCaught"] = false;
 
-            // 발견 신호 조사(InvestigateSignal) 관련 사실.
+            // 발견 신호 조사 관련 사실.
             // 다른 적의 신호를 받고 합류했는가. 합류는 ReceiveSignal에서 켜고, 수색을 끝내거나 시간이 지나면 끈다.
             s.Facts["joinedSignal"] = _ctx.Joined;
             s.Facts["atSignalLocation"] = false;
             s.Facts["signalInvestigated"] = false;
 
-            // Investigate-goal facts.
+            // 소리 조사 관련 사실.
             s.Facts["heardSound"] = bb.HasSound && CanHearSoundNow();
             s.Facts["atSoundLocation"] = false;
             s.Facts["soundInvestigated"] = false;
 
-            // Wander is always achievable; its fact starts false so the goal is
-            // never "already satisfied" and thus always available as a floor.
+            // 배회 관련 사실. (배회는 항상 이유 있는 행동이므로, WorldState에 넣어야 한다)
             s.Facts["wandering"] = false;
 
             // 목표 부품이 세계에서 읽어 온 사실
