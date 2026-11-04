@@ -63,7 +63,7 @@
 ### 시야와 청각
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
 |---|---|---|---|---|
-| 시야 | `_Game/Scripts/Detection/VisionCensor.cs` | `VisionCensor` | `DetectVision`, `IsInSameDimension`, `IsInViewDistance`, `ViewDistanceFor`, `IsInViewAngle`, `HasLineOfSight` | 0.2초마다 싼 검사부터(차원 → 거리 → 각도 → 레이캐스트). 결과를 블랙보드와 경계에 알린다 |
+| 시야 | `_Game/Scripts/Detection/VisionSensor.cs` | `VisionSensor` | `DetectVision`, `IsInSameDimension`, `IsInViewDistance`, `ViewDistanceFor`, `IsInViewAngle`, `HasLineOfSight` | 0.2초마다 싼 검사부터(차원 → 거리 → 각도 → 레이캐스트). 결과를 블랙보드와 경계에 알린다 |
 | 소리 값 | `_Game/Scripts/Detection/Sound.cs` | `Sound`, `SoundList` | (생성자) | 소리 하나의 반경·경계 단계·차원 관통 여부. `SoundList`에 게임의 소리들이 있다 |
 | 소리 값 에셋 | `_Game/Scripts/Detection/SoundLibrary.cs` | `SoundLibrary` | (ScriptableObject) | 소리 값을 조절하는 에셋 |
 | 소리 전달 | `_Game/Scripts/Detection/SoundEmitter.cs` | `SoundEmitter` | `Emit`, `CanHear` | 반경 안의 적마다 청각 배율과 차원으로 거른다. 들은 적의 경계를 올리고, 하나라도 들었으면 블랙보드에 보고한다 |
@@ -100,10 +100,10 @@
 
 ### ① 적이 플레이어를 발견했을 때
 **감지**
-`VisionCensor.Update` → `VisionCensor.DetectVision` → `VisionCensor.IsInSameDimension` → `DimensionController.CanDetectPlayer` → `VisionCensor.IsInViewDistance` → `VisionCensor.ViewDistanceFor` → `FireSource.IsLit` → `VisionCensor.IsInViewAngle` → `VisionCensor.HasLineOfSight`
+`VisionSensor.Update` → `VisionSensor.DetectVision` → `VisionSensor.IsInSameDimension` → `DimensionController.CanDetectPlayer` → `VisionSensor.IsInViewDistance` → `VisionSensor.ViewDistanceFor` → `FireSource.IsLit` → `VisionSensor.IsInViewAngle` → `VisionSensor.HasLineOfSight`
 
 **보인 순간**
-→ `AshEnemyBody.OnSpotted` (재의 적) 또는 `VisionCensor.PlaySpottedSound` (Real 적)
+→ `AshEnemyBody.OnSpotted` (재의 적) 또는 `VisionSensor.PlaySpottedSound` (Real 적)
 → `SquadBlackboard.ReportSighting`
 → `ChaserAlert.RaiseAlert` (Alerted)
 → (아무도 보지 않던 중 처음 봤으면) `HorrorChaserAgent.Roar` (② 흐름으로)
@@ -129,7 +129,7 @@
 
 ### ③ 플레이어를 놓친 뒤 수색할 때
 **놓침 보고**
-`VisionCensor.DetectVision` (보이다가 안 보임) → `SquadBlackboard.ReportLostSight`
+`VisionSensor.DetectVision` (보이다가 안 보임) → `SquadBlackboard.ReportLostSight`
 
 **직접 보던 적**
 → `HorrorChaserAgent.Replan` → `HorrorChaserAgent.BuildWorldState` (`playerVisible` = false) → `HorrorChaserAgent.GoalIsRelevant` (`CatchPlayer` 빠짐) → `GoapPlanner.Plan`
@@ -151,7 +151,7 @@
 `DimensionController.Update` (F 키, 또는 Fake 체류 시간이 다 됨) → `DimensionController.ShiftPlayerDimension` → `DimensionController.SwitchPlayerDimension` → `Player.SwitchMyDimension` → `DimensionMember.SetRenderer` → `DimensionObstacle.ApplyCollisions` → `DimensionController.MoveOutOfObstacle` → `PathGrid.EscapeBlocked` → `SoundEmitter.Emit` (`SoundList.DimensionShift`) → `SoundEmitter.CanHear` → `ChaserAlert.RaiseAlert` → `SquadBlackboard.ReportSound`
 
 **적 쪽**
-`VisionCensor.DetectVision` → `DimensionController.CanDetectPlayer` (false) → `SquadBlackboard.ReportLostSight` → `HorrorChaserAgent.Replan` → `ChaserLocomotion.MoveTo` → `Pathfinder.FindPath` (적 자신의 차원) → `PathGrid.ClosestWalkableNode` → `PathGrid.GetNeighbors` → `Node.IsWalkableIn`
+`VisionSensor.DetectVision` → `DimensionController.CanDetectPlayer` (false) → `SquadBlackboard.ReportLostSight` → `HorrorChaserAgent.Replan` → `ChaserLocomotion.MoveTo` → `Pathfinder.FindPath` (적 자신의 차원) → `PathGrid.ClosestWalkableNode` → `PathGrid.GetNeighbors` → `Node.IsWalkableIn`
 
 - 적의 격자 기준은 **적 자신의 차원**이다. 플레이어가 차원을 바꿔도 적이 지날 수 있는 칸은 그대로이고, 바뀌는 것은 목적지(놓쳤으니 다른 목표)뿐이다.
 
@@ -189,7 +189,6 @@
 |---|---|
 | `_Game/Scripts/Astar/` 폴더 | 안의 이름공간은 `Astar3D`이다. 예전 2D `Astar`는 지워졌으니 폴더 이름만 남은 것이다 |
 | `Squad` 이름공간 | 예전 협력 데모 때 이름이다. 지금은 감지, 차원, 물체, UI까지 거의 모든 코드가 여기에 있다 |
-| `VisionCensor` | Sensor의 오타로 보인다 (Censor는 "검열") |
 | `_Game/Scripts/Goap/` 폴더 | 판단(`Brain/`)뿐 아니라 이동, 애니메이션, 잡기 연출, 재의 적 겉모습(`Body/`)까지 들어 있다. "GOAP"보다 "적" 폴더에 가깝다 |
 | `_Game/Scripts/Debugging/AlertIcon.cs`, `SoundRingDisplay.cs` | 디버그 폴더에 있지만, `Game` 씬과 `Stage` 프리팹에 붙어 있고 키로 켜고 끄지도 않는다. 플레이어가 보는 게임 화면 요소다 |
 | `SoundEmitter.Emit` → `SoundRingDisplay`, `RoundAtmosphere` → `CleanViewDebug.On` | 게임 코드가 `Debugging` 폴더의 클래스를 직접 부른다. 디버그 도구를 빼면 게임 코드가 깨진다 |
@@ -225,5 +224,5 @@
 | `_Game/Scripts/Editor/ForestMapTool.cs` | 메뉴 Tools > Forest Map Tool: 지형, 경계 벽, 나무와 풀 만들기 |
 | `_Game/Scripts/Editor/PlantColliderTool.cs` | 메뉴 Tools > Plant Collider Tool: 외부 숲 에셋의 Collider 정리 |
 | `HorrorChaserAgent.LogPlan` (`_Game/Scripts/Goap/Enemies/Brain/HorrorChaserAgent.cs`) | 계획 로그: 목표나 계획이 바뀔 때 콘솔에 남김 (`LogPlans`, F11) |
-| `HorrorChaserAgent.OnDrawGizmos`, `ExtinguishFireGoal.OnDrawGizmos`, `PathGrid.OnDrawGizmos`, `VisionCensor.OnDrawGizmosSelected` | 씬 뷰 Gizmo: 적의 잡는 반경 등, 끌 불, 격자, 시야 범위와 시선 |
+| `HorrorChaserAgent.OnDrawGizmos`, `ExtinguishFireGoal.OnDrawGizmos`, `PathGrid.OnDrawGizmos`, `VisionSensor.OnDrawGizmosSelected` | 씬 뷰 Gizmo: 적의 잡는 반경 등, 끌 불, 격자, 시야 범위와 시선 |
 | `_Game/Scenes/Demo/` | 시연 씬 7개 (`DemoSceneBuilder`가 만듦) |

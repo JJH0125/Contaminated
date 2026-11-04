@@ -175,7 +175,7 @@ namespace Squad
         private void OnDisable() => _all.Remove(this);
 
         /// <summary>
-        /// 발견 신호(포효)를 보낸다. 이 적이 아무도 보지 않던 플레이어를 새로 발견했을 때 VisionCensor가 부른다.
+        /// 발견 신호(포효)를 보낸다. 이 적이 아무도 보지 않던 플레이어를 새로 발견했을 때 VisionSensor가 부른다.
         /// 받는 적: 같은 차원, roarRadius 안, 자기 자신이 아님, 지금 플레이어를 보고 있지 않음.
         /// (지금 보고 있는 적은 이미 자기 눈으로 추격 중이므로 부를 필요가 없다)
         /// </summary>

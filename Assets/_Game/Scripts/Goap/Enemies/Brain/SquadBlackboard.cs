@@ -278,7 +278,7 @@ namespace Squad
         /// <summary>
         /// 플레이어가 시야에 들어왔을 때 (보고 있는 동안 매번) 부른다.
         /// 플레이어의 위치와 이동 방향을 갱신하고, 아무도 보지 않던 플레이어를 이 적이 새로 봤다면
-        /// 사건 번호를 올리고 true를 돌려준다. 부른 쪽(VisionCensor)은 true일 때 주변 적에게 신호(포효)를 보낸다.
+        /// 사건 번호를 올리고 true를 돌려준다. 부른 쪽(VisionSensor)은 true일 때 주변 적에게 신호(포효)를 보낸다.
         /// (경계 단계는 여기서 다루지 않는다. 본 적의 ChaserAlert가 따로 올린다)
         /// </summary>
         /// <param name="playerVelocity">플레이어의 이동 속도. 이동 방향을 구하는 데 쓴다</param>

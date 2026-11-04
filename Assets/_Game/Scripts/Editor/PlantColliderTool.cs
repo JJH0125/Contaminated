@@ -25,7 +25,7 @@ using UnityEngine.Rendering;
 ///   - 판으로만 된 나무는 기둥이 그림으로만 있으므로, 한가운데에 폭의 일정 비율로 세운다
 ///
 /// 장애물 레이어를 주는 이유:
-///   PathGrid(추격자 길찾기)와 VisionCensor(시야 차폐)가 그 레이어의 Collider만 장애물로 본다.
+///   PathGrid(추격자 길찾기)와 VisionSensor(시야 차폐)가 그 레이어의 Collider만 장애물로 본다.
 ///   바닥까지 그 레이어에 들어가면 맵 전체가 막힌 칸이 되므로, 바닥은 반드시 빼야 한다.
 ///
 /// Collider를 지우지 않고 켜고 끄기만 하므로 언제든 되돌릴 수 있다. (Ctrl+Z도 가능)
@@ -55,7 +55,7 @@ public class PlantColliderTool : EditorWindow
 
     private void OnEnable()
     {
-        // PathGrid와 VisionCensor가 쓰는 장애물 레이어. 없으면 레이어 지정을 끈 채로 시작한다.
+        // PathGrid와 VisionSensor가 쓰는 장애물 레이어. 없으면 레이어 지정을 끈 채로 시작한다.
         _obstacleLayer = LayerMask.NameToLayer("Unwalkable");
         if (_obstacleLayer < 0)
         {

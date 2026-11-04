@@ -395,7 +395,7 @@ public class ForestMapTool : EditorWindow
         }
         // Terrain은 한쪽 모서리가 기준점이라, 절반만큼 당겨야 한가운데가 원점에 온다.
         terrainObject.transform.position = new Vector3(-_size * 0.5f, 0f, -_size * 0.5f);
-        // 바닥은 Floor 레이어에 둔다. 적의 시야(VisionCensor)가 이 레이어를 통과하지 못하므로 언덕이 시야를 가린다.
+        // 바닥은 Floor 레이어에 둔다. 적의 시야(VisionSensor)가 이 레이어를 통과하지 못하므로 언덕이 시야를 가린다.
         int floorLayer = LayerMask.NameToLayer("Floor");
         if (floorLayer >= 0)
             terrainObject.layer = floorLayer;

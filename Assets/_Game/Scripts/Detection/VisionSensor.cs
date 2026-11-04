@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Squad
 {
-    public class VisionCensor : MonoBehaviour
+    public class VisionSensor : MonoBehaviour
     {
         /// 시야 감지에 필요한 조건
         /// 1. 플레이어가 감지 거리 안에 있는가?

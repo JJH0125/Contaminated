@@ -89,7 +89,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 | `Goap/` | **`Goap.cs` 하나 = 범용 GOAP 엔진**(이 게임의 fact/goal 이름을 모름) |
 | `Goap/Enemies/Brain/` | 판단: `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserContext`, `SquadBlackboard`(공유 지식), `ChaserAlert`(경계), `ChaserPack`(무리), `GoapModule`(끼웠다 빼는 목표 부품) |
 | `Goap/Enemies/Body/` | 몸과 연출: `ChaserLocomotion`(A* 이동), `ChaserAnimator`, `Jumpscare`, `Ash/`(재의 적 5개: `AshEnemyBody`·`AshEnemyLight`·`AshJumpscare`·`AshSounds`·`AshWindSound`) |
-| `Detection/` | `VisionCensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
+| `Detection/` | `VisionSensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
 | `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), `DimensionObstacle`(차원별 장애물), `DimensionTint`, Fake 화면 효과 |
 | `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 |
 | `Objects/` | `Campfire`, `FireSource`, `Torch`, `Stone`(미끼 돌), `Exit`, `ExitArch`(출구 덤불 아치), `RootLine`(뿌리), `BurnAway` |
@@ -158,7 +158,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ### ⚠️ 알려진 문제 / 확인 필요
 - `SoundEmitter`의 `GetComponentInParent<ChaserAlert>()?.RaiseAlert` → Unity 컴포넌트에는 `?.` 대신 `!= null` 확인 권장
-- `VisionCensor`가 시야 검사 때마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
+- `VisionSensor`가 시야 검사 때마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
 - 소리 정보(`HasSound` 등)는 여전히 블랙보드에 하나라, 소리를 **듣지 못한** 같은 차원 적도 (느린 속도로) 조사하러 감
 - 차원 이동 도착 소리가 감지 유예 중에도 바로 적에게 전달됨
 - 던진 돌이 차원을 구분하지 않아 다른 차원 전용 장애물(웅덩이, 덤불 덮개)의 보이지 않는 기둥에 부딪히고, 장애물 레이어(바위, 나무)는 뚫고 지나감
