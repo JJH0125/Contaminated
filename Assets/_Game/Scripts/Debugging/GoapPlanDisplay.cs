@@ -7,8 +7,8 @@ namespace Squad
     /// <summary>
     /// 디버그·시연용. F4를 누르면 적의 머리 위에 지금의 판단을 띄운다. 다시 누르면 끈다.
     ///   목표    지금 추구하는 목표와 우선순위
-    ///   계획    플래너가 세운 행동의 순서. 지금 실행 중인 행동은 노란색
-    ///   실패    우선순위는 더 높았지만 계획을 세울 수 없어 건너뛴 목표 (빨간색)
+    ///   계획    플래너가 세운 행동의 순서. 지금 실행 중인 행동은 굵게 [ ]로 감싼다
+    ///   실패    우선순위는 더 높았지만 계획을 세울 수 없어 건너뛴 목표 (굵게)
     ///   경계    Calm / Suspicious / Alerted
     ///   시간    이 적이 마지막으로 계획을 세우는 데 걸린 시간과 살펴본 노드 수
     /// 미리 짜 놓은 동작이 아니라 적이 스스로 계획을 세운다는 것을 눈으로 보여 주기 위한 것이다.
@@ -147,35 +147,32 @@ namespace Squad
             if (screen.z <= 0f)
                 return;
 
-            // 목표 줄은 경계에 따라 색을 바꾸고 크게 쓴다. 멀리서도 "지금 무엇을 하려는지"가 먼저 보이게.
+            // 글자는 모두 흰색이다. 목표 줄을 크고 굵게 써서 "지금 무엇을 하려는지"가 먼저 보이게 하고,
+            // 지금 실행 중인 행동과 계획 실패는 굵게만 구분한다.
             ChaserAlert alert = agent.GetComponent<ChaserAlert>();
-            string alertColor = alert == null ? "#ffffff"
-                : alert.Level == AlertLevel.Alerted ? "#ff5050"
-                : alert.Level == AlertLevel.Suspicious ? "#ffd040"
-                : "#70e070";
 
             _text.Clear();
-            _text.Append("<size=13><color=#b0b0b0>").Append(agent.name).Append("</color></size>\n");
-            _text.Append("<size=22><b><color=").Append(alertColor).Append('>').Append(agent.CurrentGoalName)
-                 .Append("</color></b></size> <size=15>(").Append(agent.CurrentGoalPriority).Append(")</size>\n");
+            _text.Append("<size=13>").Append(agent.name).Append("</size>\n");
+            _text.Append("<size=22><b>").Append(agent.CurrentGoalName)
+                 .Append("</b></size> <size=15>(").Append(agent.CurrentGoalPriority).Append(")</size>\n");
             _text.Append("계획: ");
             bool first = true;
             foreach ((string step, bool current) in agent.PlanSteps)
             {
                 if (!first)
                     _text.Append(" → ");
-                _text.Append(current ? "<b><color=yellow>" + step + "</color></b>" : step);
+                _text.Append(current ? "<b>[" + step + "]</b>" : step);
                 first = false;
             }
             if (first)
                 _text.Append("-");
 
             if (agent.FailedGoals.Count > 0)
-                _text.Append("\n<b><color=#ff6060>계획 실패: ").Append(string.Join(", ", agent.FailedGoals)).Append("</color></b>");
+                _text.Append("\n<b>계획 실패: ").Append(string.Join(", ", agent.FailedGoals)).Append("</b>");
 
             if (alert != null)
-                _text.Append("\n경계: <color=").Append(alertColor).Append('>').Append(alert.Level).Append("</color>");
-            _text.Append($"\n<size=13><color=#b0b0b0>계획 {agent.LastPlanMilliseconds:0.000}ms · 노드 {agent.LastPlanExpanded}</color></size>");
+                _text.Append("\n경계: ").Append(alert.Level);
+            _text.Append($"\n<size=13>계획 {agent.LastPlanMilliseconds:0.000}ms · 노드 {agent.LastPlanExpanded}</size>");
 
             string label = _text.ToString();
             Vector2 size = _agentStyle.CalcSize(new GUIContent(label));
@@ -186,7 +183,7 @@ namespace Squad
             float x = Mathf.Clamp(rect.x, ScreenMargin, Mathf.Max(ScreenMargin, Screen.width - size.x - ScreenMargin));
             float y = Mathf.Clamp(rect.y, ScreenMargin, Mathf.Max(ScreenMargin, Screen.height - size.y - ScreenMargin));
             if (!Mathf.Approximately(x, rect.x) || !Mathf.Approximately(y, rect.y))
-                label = "<size=13><color=#b0b0b0>(화면 밖)</color></size> " + label;
+                label = "<size=13>(화면 밖)</size> " + label;
             rect.position = new Vector2(x, y);
             GUI.Box(rect, label, _agentStyle);
         }

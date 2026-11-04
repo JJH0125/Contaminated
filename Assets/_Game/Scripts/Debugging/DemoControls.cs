@@ -33,6 +33,11 @@ namespace Squad
             DontDestroyOnLoad(controlObject);
         }
 
+        // 다른 씬으로 바로 가면(시연 씬 바로 가기) 멈춤을 풀어, 새 씬이 멈춘 채로 시작하지 않게 한다.
+        private void OnEnable() => UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        private void OnDisable() => UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode) => _frozen = false;
+
         private void Update()
         {
             GameManager game = GameManager.Instance;

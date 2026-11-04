@@ -12,11 +12,12 @@
 
 - **장르**: 3D 쿼터뷰(약 45~60° 카메라, The Last Campfire 류) **스텔스 호러** 게임
 - **엔진/언어**: Unity / C# (에디터: VS Code)
-- **학술적 핵심 가치**: AI 시스템 (GOAP, A*, 감지). 아트가 아니라 **AI가 차별점**
+- **학술적 핵심 가치**: AI 시스템 (GOAP, A\*, 감지). 아트가 아니라 **AI가 차별점**
 - **핵심 루프**: 플레이어가 Fake 차원을 오가며 꺼진 모닥불들을 켜고(불붙는 소리 = 노출) 추격자를 피하다 출구로 탈출. 추격자는 **싸울 수 없음**(순수 스텔스 회피)
 - **개발 철학**: 로직을 프리미티브로 먼저 완성하고 아트는 마지막. 에셋은 Asset Store/Mixamo/무료 활용 권장
 
 ### 차원 메커니즘 (핵심 차별화)
+
 - 두 차원이 하나의 맵을 공유, 플레이어는 지정된 존에서만 차원 이동(제한적, 호러에 적합)
 - **각 적은 한 차원에만** 존재. **적은 차원 이동을 이해 못 함**(플레이어가 "사라진" 것으로 인식)
 - 차원 이동이 완벽한 도주가 되지 않도록:
@@ -29,12 +30,14 @@
 ## 2. 현재 코드 구조
 
 ### namespace 구성
-- `Astar3D` — 3D A* 길찾기 (활성)
-- `Astar` — 2D A* (구버전)
+
+- `Astar3D` — 3D A\* 길찾기 (활성)
+- `Astar` — 2D A\* (구버전)
 - `Squad` — GOAP 판단 + 블랙보드
 - `Detection` (예정) — 감지 시스템 (지금 만드는 중)
 
-### Astar3D/ (3D A* 길찾기, 활성)
+### Astar3D/ (3D A\* 길찾기, 활성)
+
 - `Node.cs` — Vector3, XZ 평면
 - `NodeHeap.cs` — 최소 힙
 - `PathGrid.cs` — Physics.CheckBox로 walkable 판정 (Grid→PathGrid로 개명, Unity Grid 충돌 회피)
@@ -42,14 +45,17 @@
 - `ChaserAgent.cs` — **DEPRECATED** (ChaserLocomotion+HorrorChaserAgent로 대체됨, 제거 예정)
 
 ### SquadAI/ (GOAP, namespace Squad)
+
 **GOAP 엔진 (범용, 재사용 가능):**
+
 - `Goap.cs` — 엔진. 4개 클래스:
   - `WorldState` — Facts(readonly Dictionary<string,bool>). Clone(복제), Apply(효과 병합-덮어쓰기), Matches(goal의 fact만 검사, goal⊆current면 true), DistanceTo(안 맞는 fact 수 = 휴리스틱, admissible)
   - `GoapAction` — abstract. Preconditions/Effects/GetCost/CheckProceduralPrecondition/Perform. **행동마다 Perform 코드가 달라 상속 사용**
   - `Goal` — 순수 데이터(Name/Desired/Priority). **코드 없어 상속 불필요, 값만 채움**
-  - `GoapPlanner` — static. 상태공간 A*. List.Sort(작은 상태공간이라 힙 불필요), closedSet 없음(중복 허용, 단순화)
+  - `GoapPlanner` — static. 상태공간 A\*. List.Sort(작은 상태공간이라 힙 불필요), closedSet 없음(중복 허용, 단순화)
 
 **이 게임 전용 (엔진 사용자):**
+
 - `HorrorChaserAgent.cs` — 세 목표 단일 추격자 두뇌. Update 루프(replan 타이머 0.4s + Perform 실행), BuildWorldState/SelectGoal/GoalIsRelevant/Fact(이 게임 전용이라 여기 있음, Goap.cs 아님), CurrentGoalName/CurrentActionName(디버그용 property). **AdvanceToNextAction() 추출 권장(Update와 Replan에 중복)**
 - `ChaserGoals.cs` — 세 목표 값 채우기. CatchPlayer(100)>InvestigateSound(50)>Wander(1). 우선순위에 간격 둠(중간 삽입 대비). 각 Desired에 fact 하나씩
 - `ChaserActions.cs` — 네 행동 서브클래스. ReachPlayer/MoveToSound/SearchSoundArea/WanderStep. Perform에서 실제 실행(Effects는 계획용 설계도, 실제 잡기는 Perform)
@@ -57,23 +63,26 @@
 - `SquadBlackboard.cs` — 씬 싱글톤. AlertLevel enum(Calm/Suspicious/Alerted). 경계 감쇠(alertedToSuspiciousTime=12s, suspiciousToCalmTime=25s, **둘 다 SerializeField로 뺐음**). ReportSighting/ReportLostSight/ReportSound/ClearSound. TimeSinceLastSeen=Mathf.Infinity 초기화("한번도 못 봄"). ReportLostSight는 LastKnownPlayerPos 유지(수색 단서). TryClaimRole/ReleaseRole(다중 추격자 역할 조율, 현재 미사용)
 
 **구버전 협력 데모 (다중 추격자용으로 보존):**
+
 - `SquadAgent.cs` — 성격별(공격/매복/수색) 협력 추격자 두뇌
 - `Actions.cs` — 협력용 행동 + GoalSet + ActionFactory
 
 ### 컨텍스트 객체
+
 - `ChaserContext` (SquadAgentContext에서 개명) — 행동에 전달되는 파라미터 묶음. Agent/Blackboard/Self/Player/Locomotion/CatchRadius/ArriveRadius. HorrorChaserAgent는 Agent=null(SquadAgent 아니므로). **별도 파일로 분리 권장**(현재 SquadAgent.cs에 얹혀 있어 HorrorChaserAgent가 그 파일에 의존)
 
 ---
 
-## 3. 두 층위의 A* (중요 개념)
+## 3. 두 층위의 A\* (중요 개념)
 
-1. **GoapPlanner** — 상태공간 A*. 노드=월드상태, 엣지=행동. "무엇을 할지" 결정
-2. **Pathfinder** — 그리드 A*. 노드=칸, 엣지=이동. "어떻게 갈지" 결정
+1. **GoapPlanner** — 상태공간 A\*. 노드=월드상태, 엣지=행동. "무엇을 할지" 결정
+2. **Pathfinder** — 그리드 A\*. 노드=칸, 엣지=이동. "어떻게 갈지" 결정
 
-**동일한 A* 원리**(f=g+h, open set, 역추적)를 **두 다른 문제공간**에 적용. 규모 차이로 구현은 다름(그리드=힙+closedSet+노드갱신 / GOAP=List.Sort+중복허용).
+**동일한 A\* 원리**(f=g+h, open set, 역추적)를 **두 다른 문제공간**에 적용. 규모 차이로 구현은 다름(그리드=힙+closedSet+노드갱신 / GOAP=List.Sort+중복허용).
 
 ### 이동 흐름
-HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo → Pathfinder.FindPath(그리드A*)로 _path 계산 → FollowPath로 웨이포인트 따라 rigidbody 이동. Perform은 프레임당 한 걸음, 도착 전 false / 도착 시 true 반환 → 다음 행동으로.
+
+HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo → Pathfinder.FindPath(그리드A\*)로 \_path 계산 → FollowPath로 웨이포인트 따라 rigidbody 이동. Perform은 프레임당 한 걸음, 도착 전 false / 도착 시 true 반환 → 다음 행동으로.
 
 ---
 
@@ -82,25 +91,27 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 > 위 2·3장은 초기 설계 기록이라 파일 위치와 일부 내용이 지금과 다르다. 지금 상태는 이 장을 기준으로 본다.
 
 ### 스크립트 폴더 (`Assets/_Game/Scripts/`)
-| 폴더 | 내용 |
-|---|---|
-| `Core/` | `GameManager`, **`GameTuning`**(수치 설정 에셋) |
-| `Core/Stage/` | 라운드 맵 구성: `StageLayout`(배치), `ZoneMap`(4구역), `BarrierBuilder`(나무 벽·관문·덤불 덮개·웅덩이), `CoverRockBuilder`(엄폐 바위), `RoundAtmosphere`(라운드별 밝기·안개) |
-| `Goap/` | **`Goap.cs` 하나 = 범용 GOAP 엔진**(이 게임의 fact/goal 이름을 모름) |
-| `Goap/Enemies/Brain/` | 판단: `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserContext`, `SquadBlackboard`(공유 지식), `ChaserAlert`(경계), `ChaserPack`(무리), `GoapModule`(끼웠다 빼는 목표 부품) |
-| `Goap/Enemies/Body/` | 몸과 연출: `ChaserLocomotion`(A* 이동), `ChaserAnimator`, `Jumpscare`, `Ash/`(재의 적 5개: `AshEnemyBody`·`AshEnemyLight`·`AshJumpscare`·`AshSounds`·`AshWindSound`) |
-| `Detection/` | `VisionSensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리) |
-| `Dimension/` | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), `DimensionObstacle`(차원별 장애물), `DimensionTint`, Fake 화면 효과 |
-| `Effects/` | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽 |
-| `Objects/` | `Campfire`, `FireSource`, `Torch`, `Stone`(미끼 돌), `Exit`, `ExitArch`(출구 덤불 아치), `RootLine`(뿌리), `BurnAway` |
-| `Player/` | 이동, 카메라(`Follow`, `FirstPersonView`), 횃불·돌 들기, 모닥불 켜기, 숨소리, 발소리, 보호복 오염 |
-| `Debugging/` | F1 재의 차원 관찰(시간 제한 없이 Fake에 머물고 재의 적 3마리를 둘레에 놓음), F2 깨끗한 화면, F4 GOAP 판단 표시(계획 실패·계획 시간·수색 후보 점수, F5 가까운 불 켜기), F6 두 겹 격자와 차원별 경로, F7 0.5배속, F8 멈춤, F9 다음 라운드, F11 계획 로그(F10은 Recorder 녹화 키), 시연 씬 설정(`DemoScenario`), 경계 아이콘, 소리 반경 |
-| `Audio/`, `UI/`, `Editor/`, `Astar/` | 이름 그대로 |
+
+| 폴더                                 | 내용                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Core/`                              | `GameManager`, **`GameTuning`**(수치 설정 에셋)                                                                                                                                                                                                                                                                                      |
+| `Core/Stage/`                        | 라운드 맵 구성: `StageLayout`(배치), `ZoneMap`(4구역), `BarrierBuilder`(나무 벽·관문·덤불 덮개·웅덩이), `CoverRockBuilder`(엄폐 바위), `RoundAtmosphere`(라운드별 밝기·안개)                                                                                                                                                         |
+| `Goap/`                              | **`Goap.cs` 하나 = 범용 GOAP 엔진**(이 게임의 fact/goal 이름을 모름)                                                                                                                                                                                                                                                                 |
+| `Goap/Enemies/Brain/`                | 판단: `HorrorChaserAgent`(두뇌), `ChaserGoals`, `ChaserActions`, `ChaserContext`, `SquadBlackboard`(공유 지식), `ChaserAlert`(경계), `ChaserPack`(무리), `GoapModule`(끼웠다 빼는 목표 부품)                                                                                                                                         |
+| `Goap/Enemies/Body/`                 | 몸과 연출: `ChaserLocomotion`(A\* 이동), `ChaserAnimator`, `Jumpscare`, `Ash/`(재의 적 5개: `AshEnemyBody`·`AshEnemyLight`·`AshJumpscare`·`AshSounds`·`AshWindSound`)                                                                                                                                                                |
+| `Detection/`                         | `VisionSensor`(시야), `Sound`·`SoundLibrary`·`SoundEmitter`(소리)                                                                                                                                                                                                                                                                    |
+| `Dimension/`                         | `DimensionController`(차원 이동), `DimensionMember`(차원 이름표), `DimensionObstacle`(차원별 장애물), `DimensionTint`, Fake 화면 효과                                                                                                                                                                                                |
+| `Effects/`                           | 화면 가장자리 오염, CCTV 노이즈, 나무 투명화, 경계 벽                                                                                                                                                                                                                                                                                |
+| `Objects/`                           | `Campfire`, `FireSource`, `Torch`, `Stone`(미끼 돌), `Exit`, `ExitArch`(출구 덤불 아치), `RootLine`(뿌리), `BurnAway`                                                                                                                                                                                                                |
+| `Player/`                            | 이동, 카메라(`Follow`, `FirstPersonView`), 횃불·돌 들기, 모닥불 켜기, 숨소리, 발소리, 보호복 오염                                                                                                                                                                                                                                    |
+| `Debugging/`                         | F1 재의 차원 관찰(시간 제한 없이 Fake에 머물고 재의 적 3마리를 둘레에 놓음), F2 깨끗한 화면, F4 GOAP 판단 표시(계획 실패·계획 시간·수색 후보 점수, F5 가까운 불 켜기), F6 두 겹 격자와 차원별 경로, F7 0.5배속, F8 멈춤, F9 다음 라운드, F11 계획 로그(F10은 Recorder 녹화 키), 시연 씬 설정(`DemoScenario`), 경계 아이콘, 소리 반경 |
+| `Audio/`, `UI/`, `Editor/`, `Astar/` | 이름 그대로                                                                                                                                                                                                                                                                                                                          |
 
 - 다중 추격자 데모(`SquadAgent.cs`, `Actions.cs`), 발전기, `ChaserAgent`, `MapBuilder`, `EnemyEyes`, 랜드마크는 **삭제됨** (Git 기록에는 남아 있음)
 - **수치는 `Resources/GameTuning` 에셋 한 곳에서 조절한다** (소리 값만 `SoundLibrary`). 적은 차원별(Real/Fake)로 값을 따로 둔다
 
 ### ✅ 적 AI (단일 추격자를 여러 마리로)
+
 - **경계는 적마다** (`ChaserAlert`): `Level`(읽기 전용), 입구는 `RaiseAlert(level)` 하나(높으면 올림 / 같으면 타이머만 0 / 낮으면 무시), 시간이 지나면 한 단계씩 내려감
   - 시야: 본 적만 `RaiseAlert(Alerted)` / 소리: 반경 안에서 들은 적 모두 `RaiseAlert(소리 단계)` / 신호에 합류한 적: Suspicious 유지
   - 이동 속도는 `ctx.Alert.Level`로 결정 (Calm 5 / Suspicious 9 / Alerted 13 m/s)
@@ -114,49 +125,57 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - 목표 우선순위: `CatchPlayer`(100) > `InvestigateSignal`(75) > `ExtinguishFire`(60, 목표 부품) > `InvestigateSound`(50) > `Wander`(1)
 - **목표 부품(`GoapModule`)**: 목표와 행동을 담은 컴포넌트. 켜면 다음 계획부터 그 목표를 추구하고, 끄면 돌아간다. 적 코드는 고치지 않는다
   - `ExtinguishFireGoal`: 켜진 모닥불을 10초에 걸쳐 끈다(진행도는 불에 남음). 3라운드부터 Fake 적만 켜진 채 시작. 출구가 열리면 고를 이유가 없어져 저절로 꺼짐
-  - 교수님 시연: 플레이 중 인스펙터에서 체크박스를 켜고, F4로 머리 위에 목표·계획·경계를 띄운다
+  - 전시용 시연: 플레이 중 인스펙터에서 체크박스를 켜고, F4로 머리 위에 목표·계획·경계를 띄운다
 - **Real 적과 Fake 적의 차이**: Real은 3마리 무리 순찰·포효·합류, 시선 높이 5.5m. Fake는 각자 다니며 켜진 불로 몰려가고, 횃불을 든 플레이어만 보며(15m), 청각 1.75배, 포효 없음
 - **느슨한 무리 (`ChaserPack`)**: Real 무리는 한 덩어리로 붙어 다니지 않고 영역만 함께 쓴다. 배회할 곳은 무리 중심에서 `packTerritoryRadius`(35m) 안, 다른 무리원이 있는 곳·가는 곳에서 `packSeparation`(15m) 넘게 떨어진 자리. 무리원들이 배회를 `packDriftLegs`(6)번 마칠 때마다 중심이 `packDriftDistance`(25m)씩 옮겨 가서 영역 자체가 떠돈다. 우두머리 개념은 없앰. 관문 지기는 관문 위치가 고정이라 오히려 예측 가능해져서 넣지 않기로 함
 
 ### ✅ 차원
+
 - 어디서든 F 키로 이동. **재사용 대기 15초, Fake 체류 최대 8초**(지나면 Real로 튕겨 나옴), 도착 소리, 이동 직후 감지·잡기 유예
 - Fake에 들어가면 플레이어 자리에서 **오염의 물결**이 퍼져 땅·나무·바위에 얼룩이 드러남 (`FakeContaminationEffect` + 직접 만든 후처리 셰이더)
 - **차원별 장애물과 길찾기**: 격자 칸마다 Real/Fake 막힘을 따로 세고, 적은 자기 차원 기준으로 길을 찾는다. 장벽이 바뀌면 `PathGrid.Version`이 올라 적이 경로를 다시 찾는다
 - 1인칭(Fake 진입 시 전환)은 시험해 본 뒤 **꺼 둠** (`GameTuning > Dimension > Fake First Person`, F3으로는 켤 수 있음)
 
 ### ✅ 맵과 라운드 (모든 라운드가 같은 맵, 라운드별 구성은 `GameTuning > Stage > Rounds`)
+
 - 봉우리 둘레 4구역(남·동·서·북 순으로 열림). 경계마다 높은 나무 줄 벽(시선 차단), 열린 구역끼리의 벽에는 열린 관문과 봉인된 관문
 - **탈출 조건**: 꺼진 모닥불을 정한 수만큼 켜면 출구가 열린다. 모닥불은 Real에서는 오염 덤불에 덮여 켤 수 없고 **Fake에서만 켤 수 있다**(E 1.5초, 횃불을 들어야 함)
 - 출구 앞 **덤불 아치**는 불을 켤 때마다 타서 듬성해지고, 다 켜면 열린다. Fake에서만 보이는 **뿌리**가 모닥불에서 아치와 관문으로 이어진다
 - 오염 웅덩이(Fake에서만 막음), 엄폐 바위(시선 차단), 라운드가 오를수록 어둡고 안개가 짙어짐
 
 ### ✅ 재의 적 (Fake 적의 모습)
+
 - 원래 모델은 숨기고, 그 걷는 몸 표면에서 재 입자를 뿜어 사람 실루엣을 만든다. **응집도**(거리 × 경계 상한: Calm 0.5 / Suspicious 0.75 / Alerted 1)에 따라 흩어졌다 모인다
 - 횃불이 향하는 쪽에만 흰 결정 무늬가 드러남(`Custom/Ash Enemy`), 머리 앞 결정이 얼굴 자리. 다가올수록 코드로 만든 바람 소리가 커짐(`AshWindSound`)
 - **발각 순간**: 몸을 홱 돌리고 재가 적 쪽으로 빨려 들며 결정이 번쩍임. 숨 들이켜는 소리+유리 금 소리(`AshSounds`, 코드로 생성, 다른 적은 못 들음)
 - **잡을 때(`AshJumpscare`)**: 정지 0.2 → 흩어짐 0.3 → 감싸기 0.5(Force Field로 플레이어 둘레를 돌고, 화면 가장자리 오염 `ContaminationEdgeEffect.Surge`, 카메라 당기기) → 얼굴 0.3(카메라 앞에 결정, 횃불 번쩍) → 꺼짐 0.2. 시간은 `GameTuning > Ash Enemy`. Mixamo 동작은 `spotAnimation`/`embraceAnimation`에 상태 이름을 넣으면 재생
 
 ### ✅ 그 밖의 최근 변경
+
 - 미끼 돌(`Stone`, `StoneHolder`): 줍고 던져서 소리로 적을 유인. 줍기·던지기 애니메이션은 제거
 - 횃불 메커니즘 변경, 숨기기와 온기 게이지
 - 저장소: `CLAUDE.md`는 루트, 대화 기록 hook은 프로젝트 설정(`.claude/settings.json`) 하나, PC 전용 설정(`.claude/settings.local.json`)은 Git 제외
 
 ### 시연 준비
+
 - 메뉴 **Tools > 시연 씬 만들기**: Game 씬을 복사해 `Scenes/Demo/`에 단계별 씬 7개 생성(Game 씬을 고치면 다시 실행). 시드 고정, 라운드 구성은 `StageTuning.RoundOverride`로 덮어씀(에셋은 그대로)
 - 씬 사용법, 예상 질문 답변, Real/Fake 적 비교는 `Docs/시연_준비.md`
 - 2~4번 씬: 적을 앞 30m에 세우고 그 둘레 6m만 배회하게 묶음(`ChaserPack`의 고정 영역, `Enemy Territory Radius`), 카메라는 40m로 뺌(`CameraTuning.DistanceOverride`, `Close Step Camera Distance`)
-- F4 적 판단 상자: 짙은 바탕, 목표 이름을 경계 색(초록·노랑·빨강)으로 크게, 화면 밖이면 가장자리에 붙임
+- F4 적 판단 상자: 짙은 바탕에 흰 글자, 목표 이름을 크고 굵게, 화면 밖이면 가장자리에 붙임
+- 시연 씬 안내 상자: 왼쪽 아래, 흰 글자, Tab으로 접기. **Z X C V B N M**으로 시연 씬 1~7로 바로 이동(Build Settings에서 찾음)
 - 계획 로그는 **F11** (F10은 Unity Recorder의 Quick Recording 키). Recorder 녹화가 인코더 오류로 실패하면 소리가 녹화 쪽에 묶여 안 들림 → 에디터를 다시 켠다. 백업 영상은 OBS나 Win+G 권장
 - 코드 지도(기능별 파일·메서드, 호출 흐름 5개, 정리 필요 목록)는 `Docs/CodeMap.md`
 - `Scenes/Demo/`의 시연 씬(23MB)은 메뉴로 다시 만들 수 있어 Git에 올리지 않음
 
 ### 결정한 것
+
 - **블랙보드 = 적들이 함께 아는 사실**(누가 보나, 마지막 위치·방향·속도, 수색 지도, 소리 정보) / **`ChaserAlert` = 적 각자의 긴장 상태** / **`ChaserContext` = 적 각자의 할 일 상태**(합류 여부, 추격 순위 등)
 - 경계 관련 이름: 컴포넌트 `ChaserAlert`, 속성 `Level`, 문서 필드 `ctx.Alert`, 입구 `RaiseAlert`
 - `DimensionMember` 이름은 유지 (차원별 벽·지형 등 적이 아닌 것에도 쓸 예정)
 - 두 PC 작업: 시작 시 pull → 끝낼 때 이 문서 갱신 + 커밋·푸시. 대화 기록(`문서\ClaudeLogs\*.md`)은 PC마다 따로 쌓이고 필요하면 직접 옮김
 
 ### ⚠️ 알려진 문제 / 확인 필요
+
 - `SoundEmitter`의 `GetComponentInParent<ChaserAlert>()?.RaiseAlert` → Unity 컴포넌트에는 `?.` 대신 `!= null` 확인 권장
 - `VisionSensor`가 시야 검사 때마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
 - 소리 정보(`HasSound` 등)는 여전히 블랙보드에 하나라, 소리를 **듣지 못한** 같은 차원 적도 (느린 속도로) 조사하러 감
