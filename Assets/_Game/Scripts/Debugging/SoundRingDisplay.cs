@@ -15,6 +15,7 @@ namespace Squad
     /// 씬 구성:
     ///   빈 오브젝트에 이 스크립트를 붙인다. 씬에 하나만 둔다.
     ///   녹화나 전시에서 끄고 싶으면 이 컴포넌트를 비활성화하면 된다.
+    ///   실제 게임(Game 씬)에서는 그리지 않는다. 시연 씬(DemoScenario가 있는 씬)에서만 보인다.
     /// </summary>
     public class SoundRingDisplay : MonoBehaviour
     {
@@ -104,6 +105,8 @@ namespace Squad
         public void Show(Vector3 position, Sound sound)
         {
             if (!isActiveAndEnabled || sound == null || _rings == null) return;
+            // 디버그 표시라 실제 게임에서는 그리지 않는다.
+            if (!DemoScenario.InDemoScene) return;
 
             Ring ring = GetFreeRing();
 

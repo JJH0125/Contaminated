@@ -10016,8 +10016,6 @@ MonoBehaviour:
   pauseUI: {fileID: 1886223790}
   gameOverUI: {fileID: 17366653}
   resultUI: {fileID: 53587536}
-  openExitAtStart: 1
-  totalRounds: 5
 --- !u!1 &170286575
 GameObject:
   m_ObjectHideFlags: 0
@@ -49746,10 +49744,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efc25d7e1d5305945a204d533e8e379a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  volume: 1
-  minDistance: 10
-  maxDistance: 40
-  poolSize: 8
 --- !u!4 &915576529
 Transform:
   m_ObjectHideFlags: 0
@@ -65096,6 +65090,7 @@ MonoBehaviour:
   roundText: {fileID: 352840405}
   fireText: {fileID: 413962446}
   roundFormat: "\uB77C\uC6B4\uB4DC {0} / {1}"
+  fireFormat: "\uBAA8\uB2E5\uBD88 {0} / {1}"
   exitOpenMessage: "\uD0C8\uCD9C\uD558\uC138\uC694!"
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   exitOpenColor: {r: 1, g: 0.85, b: 0.3, a: 1}
@@ -77216,12 +77211,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4defd21a9cfb284b9c619acda2e0b9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pitch: 35.4
-  yaw: 45
-  distance: 22
-  lookAheadTime: 0.25
-  maxLookAhead: 4
-  lookAheadSmoothTime: 0.5
 --- !u!114 &1400469162
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -77234,15 +77223,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8907345c725fb34bb4f88bd20a5de5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fadeTime: 0.6
-  grainIntensity: 0.6
-  grainSize: 1.4
-  wobbleAmount: 18
-  wobbleSpeed: 1.5
-  colorFringe: 0.5
-  vignette: 0.4
-  saturation: -45
-  tint: {r: 0.75, g: 0.85, b: 1, a: 1}
 --- !u!114 &1400469163
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -77301,7 +77281,9 @@ MonoBehaviour:
   m_ShowCustomSorter: 0
   breakBeforeColorGrading: 0
   m_BeforeTransparentBundles: []
-  m_BeforeStackBundles: []
+  m_BeforeStackBundles:
+  - assemblyQualifiedName: Squad.FakeContamination, Assembly-CSharp, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
   m_AfterStackBundles:
   - assemblyQualifiedName: Squad.CctvNoise, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
       PublicKeyToken=null
@@ -77981,8 +77963,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   titleMusic: {fileID: 8300000, guid: cbe39eedc0eac574c8dd72d665cc95b6, type: 3}
   playingMusic: {fileID: 8300000, guid: 79dbb2c2179b2a8418053ba30e901fb0, type: 3}
-  volume: 0.321
-  fadeDuration: 1
 --- !u!82 &1411027194
 AudioSource:
   m_ObjectHideFlags: 0

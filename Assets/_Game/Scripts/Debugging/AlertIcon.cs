@@ -16,6 +16,7 @@ namespace Squad
     ///   적 오브젝트 아래에 GameObject → 3D Object → Text - TextMeshPro 를 만들고
     ///   (UI용이 아니라 3D용) 머리 위 높이에 둔 뒤, 이 스크립트를 그 텍스트에 붙인다.
     ///   적(HorrorChaserAgent)과 몸 렌더러는 부모에서 자동으로 찾으므로 따로 연결하지 않는다.
+    ///   디버그 표시라 실제 게임(Game 씬)에서는 숨기고, 시연 씬(DemoScenario가 있는 씬)에서만 보인다.
     /// </summary>
     [RequireComponent(typeof(TMP_Text))]
     public class AlertIcon : MonoBehaviour
@@ -118,8 +119,9 @@ namespace Squad
 
             // 다른 차원에 있어 몸이 안 보이면 기호도 숨긴다.
             // (그대로 두면 보이지 않는 적의 위치가 기호로 드러난다)
-            if (_labelRenderer != null && bodyRenderer != null)
-                _labelRenderer.enabled = bodyRenderer.enabled;
+            // 실제 게임에서는 늘 숨긴다.
+            if (_labelRenderer != null)
+                _labelRenderer.enabled = DemoScenario.InDemoScene && (bodyRenderer == null || bodyRenderer.enabled);
         }
 
         // 적 아래에서 자기 자신이 아닌 첫 번째 몸 렌더러를 찾는다.

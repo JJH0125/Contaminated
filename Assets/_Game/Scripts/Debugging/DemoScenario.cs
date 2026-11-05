@@ -61,6 +61,9 @@ namespace Squad
         // 옛 씬이 새 씬의 설정을 지우지 않도록 주인일 때만 지운다.
         private static DemoScenario _active;
 
+        /// 지금 시연 씬인가. 실제 게임(Game 씬)에서는 소리 반경 원, 머리 위 기호 같은 디버그 표시를 숨기는 데 쓴다.
+        public static bool InDemoScene => _active != null;
+
         private bool ShowsPlans => step is DemoStep.GoapBasics or DemoStep.GoalToggle or DemoStep.PlanFailure or DemoStep.Cooperation;
         private bool UsesFireKeys => step is DemoStep.GoalToggle or DemoStep.PlanFailure;
 

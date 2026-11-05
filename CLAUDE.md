@@ -165,6 +165,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - 시연 씬 안내 상자: 왼쪽 아래, 흰 글자, Tab으로 접기. **Z X C V B N M**으로 시연 씬 1~7로 바로 이동(Build Settings에서 찾음)
 - 계획 로그는 **F11** (F10은 Unity Recorder의 Quick Recording 키). Recorder 녹화가 인코더 오류로 실패하면 소리가 녹화 쪽에 묶여 안 들림 → 에디터를 다시 켠다. 백업 영상은 OBS나 Win+G 권장
 - 코드 지도(기능별 파일·메서드, 호출 흐름 5개, 정리 필요 목록)는 `Docs/CodeMap.md`
+- 소리 반경 원(`SoundRingDisplay`)과 머리 위 `?`/`!`(`AlertIcon`)는 시연 씬에서만 보인다(`DemoScenario.InDemoScene`). 실제 게임(Game 씬)에서는 숨김
 - `Scenes/Demo/`의 시연 씬(23MB)은 메뉴로 다시 만들 수 있어 Git에 올리지 않음
 
 ### 결정한 것
