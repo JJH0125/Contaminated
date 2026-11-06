@@ -6,11 +6,14 @@ namespace Squad
     /// <summary>
     /// 모닥불. 라운드가 시작될 때는 모두 꺼져 있고, 정해 둔 수만큼 켜야 출구가 열린다.
     ///
-    ///   꺼져 있을 때  Real에서는 오염 덤불에 덮여 있어 켤 수 없다. 주황 불씨가 남아 있고, 연기가 피어올라 자리를 알려 준다.
-    ///                 Fake에서는 덤불이 걷혀 있어 켤 수 있다 (E를 누르고 있기, CampfireLighter)
+    ///   꺼져 있을 때  두 차원 모두 꺼져 있다. 연기 기둥이 높이 솟아 멀리서도 자리를 알 수 있다.
+    ///                 Real에서는 오염 덤불에 덮여 있어 켤 수 없고, 덤불 사이로 주황 불씨가 비친다.
+    ///                 Fake에서는 덤불이 걷혀 있어 불씨가 더 뚜렷하고, 켤 수 있다 (E를 누르고 있기, CampfireLighter)
     ///                 Fake에서만 보이는 뿌리가 이 불에서 출구까지, 그리고 이 불이 여는 관문까지 이어져 있다
-    ///   켜질 때      덮고 있던 덤불과, 이 불과 이어진 관문의 덤불이 타서 열리고, 뿌리도 타서 사라진다.
-    ///                불붙는 소리가 두 차원에 퍼져 적이 몰려온다
+    ///                 (연기와 불씨는 보이기만 한다. 적의 감지에는 영향이 없다)
+    ///   켜질 때      [Fake] 불이 활활 붙고 뿌리가 타서 사라진다. 불붙는 소리를 재의 적이 듣는다.
+    ///                [Real] 플레이어가 Real로 돌아온 순간, 불이 타는 채로 덮개와 이어진 관문의 덤불이 타기 시작해 열린다.
+    ///                       이때 불붙는 소리를 현실의 적이 듣는다. (Real에서 켜면 바로)
     ///   켜진 뒤      꺼지지 않는 불빛으로 길잡이가 되는 동시에, 그 옆에 선 플레이어를 적에게 드러낸다 (FireSource)
     ///
     /// 불빛과 "불빛에 드러난 자리인가" 판단은 같은 오브젝트의 FireSource가 맡는다. 꺼져 있는 동안은 FireSource를 꺼 둔다.
@@ -55,6 +58,8 @@ namespace Squad
         private readonly List<DimensionObstacle> _gates = new();
         // 이 불에서 출구와 관문으로 뻗은 뿌리
         private readonly List<RootLine> _roots = new();
+        // 켰지만 Real 쪽의 덤불은 아직 타지 않았다. 플레이어가 Real로 돌아오면 탄다.
+        private bool _realBurnPending;
 
         /// <summary>StageLayout이 이 불을 덮은 덤불을 넘겨준다. 불이 붙으면 덤불이 타서 사라진다.</summary>
         public void Seal(DimensionObstacle cover) => _cover = cover;
@@ -104,6 +109,31 @@ namespace Squad
             SetLit(true);
             HasBeenLit = true;
             ExtinguishProgress = 0f;
+
+            // Fake 쪽: 뿌리가 타고, 재의 적이 불붙는 소리를 듣는다.
+            foreach (RootLine root in _roots)
+                if (root != null)
+                    root.Burn();
+            SoundEmitter.Emit(transform.position, SoundList.FireLit, EnemyLayers, Dimension.Fake);
+
+            // Real 쪽: 플레이어가 Real에 있을 때 덤불이 타고 현실의 적이 듣는다. (Update에서 확인)
+            _realBurnPending = true;
+            if (PlayerInReal())
+                BurnInReal();
+
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnCampfireLit();
+        }
+
+        private const int EnemyLayers = (1 << 8) | (1 << 9);   // RealEnemy + FakeEnemy
+
+        /// <summary>
+        /// Real 쪽에서 불이 붙는다. 덮개와 이어진 관문의 덤불이 타서 열리고, 현실의 적이 불붙는 소리를 듣는다.
+        /// 그 사이에 불이 꺼졌어도 덤불은 탄다. (한 번 붙은 불이 덤불에 옮겨 붙었다)
+        /// </summary>
+        private void BurnInReal()
+        {
+            _realBurnPending = false;
             float burnTime = GameTuning.Instance.map.burnTime;
             if (_cover != null)
             {
@@ -117,15 +147,14 @@ namespace Squad
                 gate.Open();
                 BurnAway.Play(gate.gameObject, burnTime);
             }
-            foreach (RootLine root in _roots)
-                if (root != null)
-                    root.Burn();
+            SoundEmitter.Emit(transform.position, SoundList.FireLit, EnemyLayers, Dimension.Real);
+        }
 
-            // 불붙는 소리는 차원을 넘어 퍼진다. 덮개가 걷힌 불가에 두 차원의 적이 모여든다.
-            SoundEmitter.Emit(transform.position, SoundList.FireLit, (1 << 8) | (1 << 9), Dimension.None, gameObject);
-
-            if (GameManager.Instance != null)
-                GameManager.Instance.OnCampfireLit();
+        // 플레이어가 Real에 있는가. 플레이어를 찾지 못하면 Real로 친다. (덤불이 영영 타지 않는 일이 없게)
+        private static bool PlayerInReal()
+        {
+            DimensionController controller = DimensionController.Instance;
+            return controller == null || controller.player == null || controller.player.myDimension == Dimension.Real;
         }
 
         /// <summary>
@@ -165,6 +194,16 @@ namespace Squad
 
         private void Update()
         {
+            if (_realBurnPending && PlayerInReal())
+                BurnInReal();
+
+            // 불씨는 Fake에서 더 밝다. (덮은 덤불이 없다)
+            if (_ember != null && _ember.enabled)
+            {
+                MapTuning map = GameTuning.Instance.map;
+                _ember.intensity = map.emberIntensity * (PlayerInReal() ? 1f : map.emberFakeMultiplier);
+            }
+
             // 꺼져 가는 만큼 불꽃과 불빛이 작아진다. 다시 켜면 되살아난다.
             float strength = IsLit ? 1f - ExtinguishProgress * 0.8f : 1f;
             if (_flames != null)

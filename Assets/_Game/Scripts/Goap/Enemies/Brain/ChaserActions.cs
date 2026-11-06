@@ -315,14 +315,12 @@ namespace Squad
 
         public override bool Perform(ChaserContext ctx)
         {
-            Vector3 soundPosition = ctx.Blackboard.LastSoundPosition;
-            bool arrived = ctx.Locomotion.MoveTo(soundPosition, ctx.ArriveRadius, ctx.Alert.Level);
+            bool arrived = ctx.Locomotion.MoveTo(ctx.SoundPosition, ctx.ArriveRadius, ctx.Alert.Level);
 
-            // 경로가 없을 경우의 방어 코드.
+            // 경로가 없을 경우의 방어 코드. 갈 수 없는 소리는 잊는다. (자기 기록만 지우므로 다른 적의 조사는 그대로다)
             if (!ctx.Locomotion.HasValidPath)
             {
-                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SoundSource);
-                ctx.Blackboard.ClearSound();
+                ctx.ClearSound();
                 return true;
             }
             return arrived;
@@ -335,7 +333,8 @@ namespace Squad
     public class SearchSoundArea : GoapAction
     {
         private float _searchTimer;
-        private const float SearchDuration = 3f;
+        // 지금 둘러보는 소리를 들은 시각. 둘러보는 중에 새 소리를 들으면 처음부터 다시 둘러본다.
+        private float _searchingSoundTime = -1f;
 
         public SearchSoundArea()
         {
@@ -346,19 +345,23 @@ namespace Squad
 
         public override bool Perform(ChaserContext ctx)
         {
+            if (_searchingSoundTime != ctx.SoundTime)
+            {
+                _searchingSoundTime = ctx.SoundTime;
+                _searchTimer = 0f;
+            }
+
             // 검색에 든 시간 추가
             _searchTimer += Time.deltaTime;
             ctx.Locomotion.LookAround();
 
             // 검색을 충분히 했다면
-            if (_searchTimer >= SearchDuration)
+            if (_searchTimer >= GameTuning.Instance.EnemyFor(ctx.Member).soundSearchTime)
             {
                 // 검색에 든 시간 초기화
                 _searchTimer = 0f;
-                // 조사 완료 목록 추가
-                ctx.Blackboard.AddInvestigateCompleted(ctx.Blackboard.SoundSource);
-                // 같은 소리를 다시 조사하지 않도록 소리 제거
-                ctx.Blackboard.ClearSound();
+                // 같은 소리를 다시 조사하지 않도록 자기 기록만 지운다. (같은 소리를 들은 다른 적은 계속 온다)
+                ctx.ClearSound();
                 // 완료 처리
                 return true;
             }

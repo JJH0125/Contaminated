@@ -11,6 +11,10 @@ namespace Squad
     ///
     /// 달리기 애니메이션이 따로 없는 모델이므로, 빨리 움직일수록 Walk를 빠르게 재생한다.
     ///
+    /// 발소리: footsteps에 클립을 넣은 적만 낸다. 걸은 거리가 footstepStride를 넘을 때마다 하나씩 골라 3D 소리로 낸다.
+    /// 플레이어에게만 들리는 연출이고 적의 감지(SoundEmitter)와는 상관없다. 플레이어와 같은 차원일 때만 들린다.
+    /// 재의 적은 발 대신 바람 소리(AshWindSound)를 내므로 비워 둔다.
+    ///
     /// Animator Controller 구성:
     ///   Bool 파라미터 "IsMove"
     ///   Idle → Walk  조건 IsMove = true   (Has Exit Time 끔)
@@ -25,6 +29,8 @@ namespace Squad
         [Header("□ 선택 연결 — 비워두면 자동 처리")]
         [Tooltip("모델의 Animator. 비워두면 자식에서 찾는다")]
         [SerializeField] private Animator animator;
+        [Tooltip("걸을 때 낼 발소리. 여러 개면 번갈아 고른다. 비워두면 발소리를 내지 않는다")]
+        [SerializeField] private AudioClip[] footsteps;
 
         // 수치는 GameTuning 에셋의 enemyBody 항목에서 읽는다.
         private float moveThreshold => GameTuning.Instance.enemyBody.moveThreshold;
@@ -36,12 +42,28 @@ namespace Squad
         private Vector3 _lastPosition;
         private float _moveSpeed;
 
+        private AudioSource _stepSource;
+        private DimensionMember _member;
+        private float _stepDistance;
+        private int _lastStep = -1;
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody>();
 
             if (animator == null)
                 animator = GetComponentInChildren<Animator>();
+
+            _member = GetComponent<DimensionMember>();
+            if (footsteps != null && footsteps.Length > 0)
+            {
+                _stepSource = gameObject.AddComponent<AudioSource>();
+                _stepSource.playOnAwake = false;
+                _stepSource.spatialBlend = 1f;
+                _stepSource.rolloffMode = AudioRolloffMode.Linear;
+                _stepSource.minDistance = 3f;
+                _stepSource.dopplerLevel = 0f;
+            }
         }
 
         private void OnEnable() => _lastPosition = _rigidbody.position;
@@ -55,6 +77,38 @@ namespace Squad
             // 이동 명령이 한 번 빠진 물리 갱신에서 Idle로 깜빡이지 않도록 부드럽게 따라간다.
             _moveSpeed = Mathf.Lerp(_moveSpeed, moved.magnitude / Time.fixedDeltaTime, 0.25f);
             _lastPosition = _rigidbody.position;
+
+            if (_stepSource != null && _moveSpeed > moveThreshold)
+            {
+                _stepDistance += moved.magnitude;
+                if (_stepDistance >= Mathf.Max(GameTuning.Instance.enemyBody.footstepStride, 0.2f))
+                {
+                    _stepDistance = 0f;
+                    PlayFootstep();
+                }
+            }
+        }
+
+        // 발소리 하나를 낸다. 같은 클립이 연달아 나지 않게 고른다.
+        private void PlayFootstep()
+        {
+            // 다른 차원의 적은 보이지 않으므로 발소리도 들리지 않는다.
+            DimensionController controller = DimensionController.Instance;
+            if (controller != null && _member != null && !controller.CompareDimension(_member))
+                return;
+
+            int index = Random.Range(0, footsteps.Length);
+            if (footsteps.Length > 1 && index == _lastStep)
+                index = (index + 1) % footsteps.Length;
+            _lastStep = index;
+            if (footsteps[index] == null)
+                return;
+
+            EnemyBodyTuning tuning = GameTuning.Instance.enemyBody;
+            float sfxVolume = SfxPlayer.Instance != null ? SfxPlayer.Instance.Volume : 1f;
+            _stepSource.maxDistance = tuning.footstepMaxDistance;
+            _stepSource.pitch = Random.Range(0.9f, 1.05f);
+            _stepSource.PlayOneShot(footsteps[index], tuning.footstepVolume * sfxVolume);
         }
 
         private void Update()

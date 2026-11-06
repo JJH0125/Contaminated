@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Squad
@@ -8,47 +9,47 @@ namespace Squad
         private const int MaxHits = 16;
         private static readonly Collider[] _hits = new Collider[MaxHits];
         
+        // 한 적의 몸에 콜라이더가 여럿이어도 한 번만 듣게 한다.
+        private static readonly HashSet<HorrorChaserAgent> _heard = new();
+
         /// position에서 sound를 방출한다.
-        /// Radius 안에 있으면서 enemyLayer 안에 속한 개체가 있다면 ReportSound한다.
-        /// 플레이어가 내는 소리가 아니면 오브젝트의 정보를 같이 넘긴다.
-        /// 차원을 넘는 소리가 아니면 오브젝트가 현재 위치한 차원을 같이 넘긴다.
-        public static void Emit(Vector3 position, Sound sound, LayerMask enemyLayer, Dimension dimension, GameObject source = null)
+        /// 반경(× 적마다의 청각 배율) 안에서 들을 수 있는 적에게만 전한다. 들은 적은 경계가 오르고,
+        /// 자기 기록(ChaserContext)에 소리의 위치를 적는다. 블랙보드에는 적지 않는다. 듣는 것은 들은 적만 안다.
+        /// 차원을 넘는 소리가 아니면, 소리가 난 차원(dimension)의 적만 듣는다.
+        /// playEffect: 효과음과 반경 표시를 낼지. 같은 소리를 차원마다 따로 낼 때 두 번째부터는 끈다.
+        public static void Emit(Vector3 position, Sound sound, LayerMask enemyLayer, Dimension dimension, bool playEffect = true)
         {
-             // 소리 반경 표시 — 들은 적이 없어도 보여줘야 하므로 맨 앞에서 호출
-            if (SoundRingDisplay.Instance != null)
-                SoundRingDisplay.Instance.Show(position, sound);
+            if (playEffect)
+            {
+                // 소리 반경 표시와 효과음 — 들은 적이 없어도 보여주고 들려준다
+                if (SoundRingDisplay.Instance != null)
+                    SoundRingDisplay.Instance.Show(position, sound);
+                if (SfxPlayer.Instance != null)
+                    SfxPlayer.Instance.PlayAt(sound.Clip, position);
+            }
 
-            // 효과음 재생 — 반경 표시와 같은 이유로 들은 적이 없어도 재생한다
-            if (SfxPlayer.Instance != null)
-                SfxPlayer.Instance.PlayAt(sound.Clip, position);
-
-            if (SquadBlackboard.Instance == null)
-                return;
-            
             // 청각이 좋은 적(Fake)까지 찾을 수 있도록 넉넉하게 찾은 뒤, 적마다 자기 청각으로 거른다.
             GameTuning tuning = GameTuning.Instance;
             float widest = sound.Radius * Mathf.Max(tuning.realEnemy.hearingMultiplier, tuning.fakeEnemy.hearingMultiplier);
             int count = Physics.OverlapSphereNonAlloc(
                 position, widest, _hits, enemyLayer, QueryTriggerInteraction.Ignore);
 
-            // ReportSound는 한 명이라도 소리를 들어야 호출한다.
-            bool AnyOneHeard = false;
-
-            // 반경 안에 있다고 모두 들을 수 있는 건 아니기 때문에
-            // 차원을 관통하지 못하는 소리는 같은 차원의 적이 있어야만 보고한다.
-            // (다른 차원의 적만 반경 안에 있을 때 보고하면, 블랙보드를 공유하는
-            //  멀리 있는 같은 차원의 적이 그 소리를 조사하러 오게 된다)
+            _heard.Clear();
             for (int i = 0; i < count; i++)
             {
-                if (CanHear(_hits[i], position, sound, dimension))
-                {
-                    AnyOneHeard = true;
-                    _hits[i].GetComponentInParent<ChaserAlert>()?.RaiseAlert(sound.Alert);
-                }                
+                if (!CanHear(_hits[i], position, sound, dimension))
+                    continue;
+
+                HorrorChaserAgent agent = _hits[i].GetComponentInParent<HorrorChaserAgent>();
+                if (agent == null || !_heard.Add(agent))
+                    continue;
+
+                // 경계를 먼저 올려야 다시 세우는 계획이 오른 경계의 속도로 움직인다.
+                ChaserAlert alert = agent.GetComponent<ChaserAlert>();
+                if (alert != null)
+                    alert.RaiseAlert(sound.Alert);
+                agent.HearSound(position);
             }
-            
-            if (AnyOneHeard)
-                    SquadBlackboard.Instance.ReportSound(position, sound, dimension, source);
         }
 
         private static bool CanHear(Collider enemy, Vector3 position, Sound sound, Dimension dimension)

@@ -21,7 +21,7 @@
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
 |---|---|---|---|---|
 | 두뇌 | `_Game/Scripts/Goap/Enemies/Brain/HorrorChaserAgent.cs` | `HorrorChaserAgent` | `Update`, `Replan`, `ReplanNow`, `BuildWorldState`, `RankGoals`, `GoalIsRelevant`, `RefreshModules`, `Roar`, `ReceiveSignal`, `UpdateJoined` | 0.4초마다 사실을 모아 계획하고, 계획의 행동을 한 프레임씩 실행한다 |
-| 할 일 상태 | `_Game/Scripts/Goap/Enemies/Brain/ChaserContext.cs` | `ChaserContext` | (필드만) | 행동에 넘기는 적 각자의 상태. 합류 여부(`Joined`), 추격 순위(`ChaseRank`), 이동·경계·무리 연결 |
+| 할 일 상태 | `_Game/Scripts/Goap/Enemies/Brain/ChaserContext.cs` | `ChaserContext` | `HearSound`, `ClearSound` | 행동에 넘기는 적 각자의 상태. 합류 여부(`Joined`), 추격 순위(`ChaseRank`), 들은 소리(`HasSound`, `SoundPosition`, `SoundTime`), 이동·경계·무리 연결 |
 | 무리 | `_Game/Scripts/Goap/Enemies/Brain/ChaserPack.cs` | `ChaserPack` | `TryChooseSpot`, `Add`, `CountLeg` | Real 적이 함께 쓰는 배회 영역. 서로 떨어진 자리를 고르고 중심이 떠돈다 |
 
 ### 목표
@@ -38,8 +38,8 @@
 | 잡기 | 〃 | `ReachPlayer` | `playerVisible` → `playerCaught` | `ChooseTarget`으로 곧장 쫓거나 앞질러 가고, 잡는 거리에서 잡기 연출을 튼다 |
 | 신호 지점으로 | 〃 | `MoveToSignal` | `joinedSignal` → `atSignalLocation` | 발견 지점으로 가서 `EnsureSearchPlan`으로 수색 지도를 만든다 |
 | 신호 지점 수색 | 〃 | `SearchSignalArea` | `atSignalLocation` → `signalInvestigated` | 수색 지점을 하나씩 맡아 가서 둘러본다. 남은 지점이 없으면 합류를 푼다 |
-| 소리 쪽으로 | 〃 | `MoveToSound` | `heardSound` → `atSoundLocation` | 마지막 소리 위치로 간다. 길이 없으면 그 소리를 조사 완료로 친다 |
-| 소리 자리 둘러보기 | 〃 | `SearchSoundArea` | `atSoundLocation` → `soundInvestigated` | 3초 둘러본 뒤 소리 정보를 지운다 |
+| 소리 쪽으로 | 〃 | `MoveToSound` | `heardSound` → `atSoundLocation` | 자기가 들은 소리 위치로 간다. 길이 없으면 자기 기록을 지운다 |
+| 소리 자리 둘러보기 | 〃 | `SearchSoundArea` | `atSoundLocation` → `soundInvestigated` | `soundSearchTime`(3초) 둘러본 뒤 자기 기록만 지운다. 둘러보는 중에 새 소리를 들으면 처음부터 |
 | 배회 | 〃 | `WanderStep` | (없음) → `wandering` | `ChooseWanderTarget`으로 무리 영역이나 켜진 불 둘레를 고르고, 도착하면 잠시 쉰다 |
 | 불 곁으로 | `_Game/Scripts/Goap/Enemies/Brain/ExtinguishFireGoal.cs` | `MoveToFire` (내부 클래스) | `litFireKnown` → `atFire` | 가장 가까운 켜진 불로 간다 |
 | 불 끄기 | 〃 | `Extinguish` (내부 클래스) | `atFire` → `fireExtinguished` | `Campfire.AddExtinguish`를 매 프레임 불러 끈다. 진행도는 불에 남는다 |
@@ -48,7 +48,7 @@
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
 |---|---|---|---|---|
 | ChaserAlert | `_Game/Scripts/Goap/Enemies/Brain/ChaserAlert.cs` | `ChaserAlert`, `AlertLevel` | `RaiseAlert`, `SetAlert`(private), `Update`, `Level` | 적 각자의 경계. 올리는 입구는 `RaiseAlert` 하나이고, 시간이 지나면 한 단계씩 내려간다 |
-| SquadBlackboard | `_Game/Scripts/Goap/Enemies/Brain/SquadBlackboard.cs` | `SquadBlackboard` (+ `SearchPoint`, `SearchCandidate`) | `ReportSighting`, `ReportLostSight`, `IsSeeingPlayerNow`, `ChaseRank`, `ReportSound`, `ClearSound`, `AddInvestigateCompleted`, `EnsureSearchPlan`, `ClaimSearchPoint`, `CompleteSearchPoint`, `ReleaseSearchPoints`, `MarkSearchPointsSeen` | 적들이 함께 아는 사실. 누가 보고 있나, 마지막 위치·방향, 발견 사건 번호(`spotCount`), 수색 지도, 소리 하나 |
+| SquadBlackboard | `_Game/Scripts/Goap/Enemies/Brain/SquadBlackboard.cs` | `SquadBlackboard` (+ `SearchPoint`, `SearchCandidate`) | `ReportSighting`, `ReportLostSight`, `IsSeeingPlayerNow`, `ChaseRank`, `EnsureSearchPlan`, `ClaimSearchPoint`, `CompleteSearchPoint`, `ReleaseSearchPoints`, `MarkSearchPointsSeen` | 적들이 함께 아는 사실. 누가 보고 있나, 마지막 위치·방향, 발견 사건 번호(`spotCount`), 수색 지도. 소리는 없다(들은 적의 `ChaserContext`에) |
 
 ### 길찾기 (두 겹 격자)
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
@@ -66,7 +66,7 @@
 | 시야 | `_Game/Scripts/Detection/VisionSensor.cs` | `VisionSensor` | `DetectVision`, `IsInSameDimension`, `IsInViewDistance`, `ViewDistanceFor`, `IsInViewAngle`, `HasLineOfSight` | 0.2초마다 싼 검사부터(차원 → 거리 → 각도 → 레이캐스트). 결과를 블랙보드와 경계에 알린다 |
 | 소리 값 | `_Game/Scripts/Detection/Sound.cs` | `Sound`, `SoundList` | (생성자) | 소리 하나의 반경·경계 단계·차원 관통 여부. `SoundList`에 게임의 소리들이 있다 |
 | 소리 값 에셋 | `_Game/Scripts/Detection/SoundLibrary.cs` | `SoundLibrary` | (ScriptableObject) | 소리 값을 조절하는 에셋 |
-| 소리 전달 | `_Game/Scripts/Detection/SoundEmitter.cs` | `SoundEmitter` | `Emit`, `CanHear` | 반경 안의 적마다 청각 배율과 차원으로 거른다. 들은 적의 경계를 올리고, 하나라도 들었으면 블랙보드에 보고한다 |
+| 소리 전달 | `_Game/Scripts/Detection/SoundEmitter.cs` | `SoundEmitter` | `Emit`, `CanHear` | 반경 안의 적마다 청각 배율과 차원으로 거른다. 들은 적의 경계를 올리고 `HorrorChaserAgent.HearSound`로 그 적에게만 소리 위치를 적는다 |
 
 ### 차원 이동
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
@@ -78,7 +78,7 @@
 ### 모닥불
 | 기능 | 파일 경로 | 클래스 | 핵심 메서드 | 한 줄 설명 |
 |---|---|---|---|---|
-| 모닥불 | `_Game/Scripts/Objects/Campfire.cs` | `Campfire` | `Light`, `AddExtinguish`, `Extinguish`, `LinkGate`, `ConnectRoot`, `IsLit` | 켜면 덮개·관문을 열고 뿌리를 태우며, 두 차원에 퍼지는 소리를 내고 출구 조건을 확인한다 |
+| 모닥불 | `_Game/Scripts/Objects/Campfire.cs` | `Campfire` | `Light`, `BurnInReal`, `AddExtinguish`, `Extinguish`, `LinkGate`, `ConnectRoot`, `IsLit` | 켜면 덮개·관문을 열고 뿌리를 태우며, Fake 쪽(뿌리, 재의 적이 듣는 소리)은 켜는 순간, Real 쪽(덮개·관문 덤불, 현실의 적이 듣는 소리)은 플레이어가 Real로 돌아온 순간 처리하고 출구 조건을 확인한다 |
 | 불 켜기 조작 | `_Game/Scripts/Player/CampfireLighter.cs` | `CampfireLighter` | `Update`, `Nearest`, `Release` | Fake에서 횃불을 들고 E를 1.5초 누르면 `Campfire.Light` |
 | 불빛 | `_Game/Scripts/Objects/FireSource.cs` | `FireSource` | `IsLit`(static), `PlaceLight` | 조명을 만들고, "이 자리가 불빛에 드러났나"를 시야에 알려 준다 |
 
@@ -133,7 +133,7 @@
 
 **직접 보던 적**
 → `HorrorChaserAgent.Replan` → `HorrorChaserAgent.BuildWorldState` (`playerVisible` = false) → `HorrorChaserAgent.GoalIsRelevant` (`CatchPlayer` 빠짐) → `GoapPlanner.Plan`
-- 소리 정보가 있으면 `InvestigateSound` (`MoveToSound` → `SearchSoundArea`), 없으면 `Wander` (`WanderStep`)
+- 자기가 들은 소리가 있으면 `InvestigateSound` (`MoveToSound` → `SearchSoundArea`), 없으면 `Wander` (`WanderStep`)
 - **직접 보던 적은 수색 지도를 쓰지 않는다.** (CLAUDE.md "다음 작업 후보" 3번)
 
 **합류한 적의 수색**
@@ -148,7 +148,7 @@
 
 ### ④ 플레이어가 차원을 바꿨을 때 적의 길찾기
 **플레이어 쪽**
-`DimensionController.Update` (F 키, 또는 Fake 체류 시간이 다 됨) → `DimensionController.ShiftPlayerDimension` → `DimensionController.SwitchPlayerDimension` → `Player.SwitchMyDimension` → `DimensionMember.SetRenderer` → `DimensionObstacle.ApplyCollisions` → `DimensionController.MoveOutOfObstacle` → `PathGrid.EscapeBlocked` → `SoundEmitter.Emit` (`SoundList.DimensionShift`) → `SoundEmitter.CanHear` → `ChaserAlert.RaiseAlert` → `SquadBlackboard.ReportSound`
+`DimensionController.Update` (F 키, 또는 Fake 체류 시간이 다 됨) → `DimensionController.ShiftPlayerDimension` → `DimensionController.SwitchPlayerDimension` → `Player.SwitchMyDimension` → `DimensionMember.SetRenderer` → `DimensionObstacle.ApplyCollisions` → `DimensionController.MoveOutOfObstacle` → `PathGrid.EscapeBlocked` → `SoundEmitter.Emit` (`SoundList.DimensionShift`) → `SoundEmitter.CanHear` → `ChaserAlert.RaiseAlert` → `HorrorChaserAgent.HearSound` (`ChaserContext.HearSound`) → `HorrorChaserAgent.ReplanNow`
 
 **적 쪽**
 `VisionSensor.DetectVision` → `DimensionController.CanDetectPlayer` (false) → `SquadBlackboard.ReportLostSight` → `HorrorChaserAgent.Replan` → `ChaserLocomotion.MoveTo` → `Pathfinder.FindPath` (적 자신의 차원) → `PathGrid.ClosestWalkableNode` → `PathGrid.GetNeighbors` → `Node.IsWalkableIn`

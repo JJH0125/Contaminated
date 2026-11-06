@@ -22,7 +22,7 @@
 - **각 적은 한 차원에만** 존재. **적은 차원 이동을 이해 못 함**(플레이어가 "사라진" 것으로 인식)
 - 차원 이동이 완벽한 도주가 되지 않도록:
   - 경계 수준이 서서히 감쇠(Alerted→Suspicious→Calm)해서 돌아오는 게 위험
-  - **불붙는 소리는 차원 관통**, **발소리는 차원 내에서만** — 누가 ReportSound를 받는지로 제어(블랙보드가 아니라 감지 시스템이 결정)
+  - **불붙는 소리는 두 차원 모두**(차원마다 따로 냄), **발소리는 차원 내에서만** — 누가 소리를 받는지로 제어(블랙보드가 아니라 감지 시스템이 결정)
 - 이 조합(쿼터뷰 호러 + 능동적 차원 이동 + GOAP 다중 추격자 + 차원별 소리 규칙)은 **웹 검색으로 신규성 확인됨**
 
 ---
@@ -116,6 +116,9 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
   - 시야: 본 적만 `RaiseAlert(Alerted)` / 소리: 반경 안에서 들은 적 모두 `RaiseAlert(소리 단계)` / 신호에 합류한 적: Suspicious 유지
   - 이동 속도는 `ctx.Alert.Level`로 결정 (Calm 5 / Suspicious 9 / Alerted 13 m/s)
 - **직접 본 적만 추격**: `playerVisible = bb.IsSeeingPlayerNow(enemy)` (블랙보드의 `_seeingEnemies` 집합)
+- **들은 적만 소리를 안다**: `SoundEmitter.Emit`이 반경(× 청각 배율)·차원으로 거른 적에게만 `HorrorChaserAgent.HearSound`를 불러, 그 적의 `ChaserContext`(`HasSound`·`SoundPosition`·`SoundTime`)에 적는다. 블랙보드에는 소리가 없다
+  - 새 소리는 덮어쓰고 바로 다시 계획(`ReplanNow`). 조사를 끝내거나 길이 없으면 자기 기록만 지움. `soundMemoryTime`(20초)이 지나면 잊음
+  - 모닥불 소리는 차원을 넘지 않고 Fake·Real에 따로 낸다. Fake는 켜는 순간(`Campfire.Light`), Real은 플레이어가 Real로 돌아와 덮개가 타는 순간(`Campfire.BurnInReal`). 차원을 넘는 소리 기능(`Sound.canCrossDimension`)은 남아 있지만 지금 쓰는 소리는 없다
 - **발견 신호(포효)**: 플레이어를 새로 발견하면(`ReportSighting`이 true, 사건 번호 `spotCount` 증가) `HorrorChaserAgent.Roar()`가 `roarRadius`(40m) 안의 **같은 차원** 적에게 `ReceiveSignal`을 보낸다 → 받은 적은 `ctx.Joined = true`
   - 목표 `InvestigateSignal`(우선순위 75): `MoveToSignal` → `SearchSignalArea`
   - 아무도 `joinTimeout`(30초) 동안 플레이어를 못 보면 합류를 풀고 돌아간다
@@ -124,7 +127,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 - **계획이 안 나오는 목표는 건너뜀**: 우선순위가 높은 순으로 계획을 세워 보고 처음 계획이 나온 목표를 따른다(같으면 목록 순서). 예전에는 그 자리에 멈췄다
 - 목표 우선순위: `CatchPlayer`(100) > `InvestigateSignal`(75) > `ExtinguishFire`(60, 목표 부품) > `InvestigateSound`(50) > `Wander`(1)
 - **목표 부품(`GoapModule`)**: 목표와 행동을 담은 컴포넌트. 켜면 다음 계획부터 그 목표를 추구하고, 끄면 돌아간다. 적 코드는 고치지 않는다
-  - `ExtinguishFireGoal`: 켜진 모닥불을 10초에 걸쳐 끈다(진행도는 불에 남음). 3라운드부터 Fake 적만 켜진 채 시작. 출구가 열리면 고를 이유가 없어져 저절로 꺼짐
+  - `ExtinguishFireGoal`: 켜진 모닥불을 10초에 걸쳐 끈다(진행도는 불에 남음). **게임에서는 모든 라운드에서 꺼 둠**(11/6, 시연에서만 인스펙터 체크박스나 시연 씬 숫자 1 키로 켬). 출구가 열리면 고를 이유가 없어져 저절로 꺼짐
   - 전시용 시연: 플레이 중 인스펙터에서 체크박스를 켜고, F4로 머리 위에 목표·계획·경계를 띄운다
 - **Real 적과 Fake 적의 차이**: Real은 3마리 무리 순찰·포효·합류, 시선 높이 5.5m. Fake는 각자 다니며 켜진 불로 몰려가고, 횃불을 든 플레이어만 보며(15m), 청각 1.75배, 포효 없음
 - **느슨한 무리 (`ChaserPack`)**: Real 무리는 한 덩어리로 붙어 다니지 않고 영역만 함께 쓴다. 배회할 곳은 무리 중심에서 `packTerritoryRadius`(35m) 안, 다른 무리원이 있는 곳·가는 곳에서 `packSeparation`(15m) 넘게 떨어진 자리. 무리원들이 배회를 `packDriftLegs`(6)번 마칠 때마다 중심이 `packDriftDistance`(25m)씩 옮겨 가서 영역 자체가 떠돈다. 우두머리 개념은 없앰. 관문 지기는 관문 위치가 고정이라 오히려 예측 가능해져서 넣지 않기로 함
@@ -140,7 +143,9 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 - 봉우리 둘레 4구역(남·동·서·북 순으로 열림). 경계마다 높은 나무 줄 벽(시선 차단), 열린 구역끼리의 벽에는 열린 관문과 봉인된 관문
 - **탈출 조건**: 꺼진 모닥불을 정한 수만큼 켜면 출구가 열린다. 모닥불은 Real에서는 오염 덤불에 덮여 켤 수 없고 **Fake에서만 켤 수 있다**(E 1.5초, 횃불을 들어야 함)
+- **꺼진 모닥불**: 두 차원 모두 꺼져 있고 연기 기둥과 주황 불씨로 자리를 알림(감지에는 영향 없음). 불씨는 Fake에서 `emberFakeMultiplier`(2.5)배 밝음. Fake에서 켜면 불이 붙고 뿌리가 타며 재의 적이 듣고, **플레이어가 Real로 돌아온 순간** 덮개·이어진 관문 덤불이 타서 열리고 현실의 적이 듣는다
 - 출구 앞 **덤불 아치**는 불을 켤 때마다 타서 듬성해지고, 다 켜면 열린다. Fake에서만 보이는 **뿌리**가 모닥불에서 아치와 관문으로 이어진다
+- **오염 덤불의 모습**(모닥불 덮개·봉인된 관문·출구 아치 공통): `GameTuning > Map > Bramble Style`(덤불 / 코드로 만든 덩굴 / 둘 다)과 `Bramble Texture`(비우면 `moss_wood`, 시험용 `brown_mud_leaves_01`). 기본은 덤불만. 아치의 덩굴은 덤불과 섞여 불을 켤 때마다 하나씩 탄다
 - 오염 웅덩이(Fake에서만 막음), 엄폐 바위(시선 차단), 라운드가 오를수록 어둡고 안개가 짙어짐
 
 ### ✅ 재의 적 (Fake 적의 모습)
@@ -152,6 +157,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ### ✅ 그 밖의 최근 변경
 
+- 현실의 적 발소리: `ChaserAnimator.footsteps`(Stage 프리팹의 Real 적에 괴물 발소리 3개 연결), 걸은 거리마다 3D 소리, 같은 차원일 때만 들림. 재의 적은 `AshWindSound`가 이동 소리 역할
 - 미끼 돌(`Stone`, `StoneHolder`): 줍고 던져서 소리로 적을 유인. 줍기·던지기 애니메이션은 제거
 - 횃불 메커니즘 변경, 숨기기와 온기 게이지
 - 저장소: `CLAUDE.md`는 루트, 대화 기록 hook은 프로젝트 설정(`.claude/settings.json`) 하나, PC 전용 설정(`.claude/settings.local.json`)은 Git 제외
@@ -177,9 +183,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ### ⚠️ 알려진 문제 / 확인 필요
 
-- `SoundEmitter`의 `GetComponentInParent<ChaserAlert>()?.RaiseAlert` → Unity 컴포넌트에는 `?.` 대신 `!= null` 확인 권장
 - `VisionSensor`가 시야 검사 때마다 `GetComponent<ChaserAlert>()` 호출 → `Start`에서 한 번 구해 두기 권장
-- 소리 정보(`HasSound` 등)는 여전히 블랙보드에 하나라, 소리를 **듣지 못한** 같은 차원 적도 (느린 속도로) 조사하러 감
 - 차원 이동 도착 소리가 감지 유예 중에도 바로 적에게 전달됨
 - 던진 돌이 차원을 구분하지 않아 다른 차원 전용 장애물(웅덩이, 덤불 덮개)의 보이지 않는 기둥에 부딪히고, 장애물 레이어(바위, 나무)는 뚫고 지나감
 - 2장(코드 구조)은 초기 설계 기록 그대로. 지금 구조는 4장의 폴더 표를 본다
@@ -205,7 +209,7 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 다중 추격자 작업(발견 신호, 수색 지도, 추격 겹침)은 끝났다. 다음은 아래에서 고른다.
 
 1. **실제 플레이로 AI 튜닝**: 포효 반경(40m), 합류 해제 시간(30초), 앞질러 가기 값, 경계 감쇠 시간을 `GameTuning`에서 조절하며 난이도 확인
-2. **소리 기억을 적별로 나누기**: `SoundEmitter`의 반복문은 이미 누가 들었는지 알고 있으므로, 들은 적에게만 소리 위치를 전달 (위 "알려진 문제" 해결)
+2. ~~**소리 기억을 적별로 나누기**~~ (11/6 완료)
 3. **놓친 자리 수색**: 직접 보던 적이 플레이어를 놓쳤을 때도 수색 지도를 쓰게 하면, 횃불·돌·차원 이동으로 추격이 순식간에 끝나는 문제가 줄어듦
 4. **차원 이동 도착 소리 조정**: 유예를 2초로 늘리고, 소리를 유예가 끝날 때 내는 안
 5. **차원별 벽**: 차원별 레이어·충돌, 오브젝트 보이기/숨기기, 차원별 길찾기 격자 (지형 분리는 그 뒤)

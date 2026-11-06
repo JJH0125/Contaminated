@@ -15,6 +15,7 @@ namespace Squad
     /// 자신의 Locomotion
     /// 자신의 DimensionMember
     /// 자신의 Action이 사용할 수치 값들 (잡는 거리, 도착 거리, 배회 시간)
+    /// 자신이 들은 소리 (들은 적만 안다)
     /// </summary>
     public class ChaserContext
     {
@@ -43,6 +44,22 @@ namespace Squad
         public bool Joined;
         // 대응 중인 사건 번호
         public int ProcessingSpotCount;
+
+        // 들은 소리. 소리가 난 순간 SoundEmitter가 반경 안에서 들은 적에게만 적는다. (블랙보드에 두지 않는다)
+        // 새 소리를 들으면 덮어쓰고, 조사를 끝내거나 오래되면 자기 기록만 지운다.
+        public bool HasSound { get; private set; }
+        public Vector3 SoundPosition { get; private set; }
+        // 들은 시각. 오래된 기록을 지우고, 조사 중에 새 소리를 들었는지 알아보는 데 쓴다.
+        public float SoundTime { get; private set; }
+
+        public void HearSound(Vector3 position)
+        {
+            HasSound = true;
+            SoundPosition = position;
+            SoundTime = Time.time;
+        }
+
+        public void ClearSound() => HasSound = false;
 
         // 추격 겹침: 앞질러 가는 적이 몇 초 뒤의 플레이어 위치를 노리는가
         public float InterceptLeadTime;

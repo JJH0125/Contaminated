@@ -109,15 +109,20 @@ namespace Squad
             Vector3 side = Vector3.Cross(Vector3.up, direction);
             float thickness = Tuning.zoneWallThickness;
             int rows = Mathf.Max(1, Tuning.sealedGateBushRows);
-            for (float along = 0f; along <= length; along += Mathf.Max(Tuning.sealedGateBushSpacing, 0.5f))
+            if (HasBushes)
             {
-                for (int row = 0; row < rows; row++)
+                for (float along = 0f; along <= length; along += Mathf.Max(Tuning.sealedGateBushSpacing, 0.5f))
                 {
-                    float across = rows > 1 ? Mathf.Lerp(-thickness * 0.4f, thickness * 0.4f, row / (rows - 1f)) : 0f;
-                    Vector3 spot = from + direction * (along + Random.Range(-0.4f, 0.4f)) + side * (across + Random.Range(-0.4f, 0.4f));
-                    PlaceContaminatedBush(gate.transform, templates, spot);
+                    for (int row = 0; row < rows; row++)
+                    {
+                        float across = rows > 1 ? Mathf.Lerp(-thickness * 0.4f, thickness * 0.4f, row / (rows - 1f)) : 0f;
+                        Vector3 spot = from + direction * (along + Random.Range(-0.4f, 0.4f)) + side * (across + Random.Range(-0.4f, 0.4f));
+                        PlaceContaminatedBush(gate.transform, templates, spot);
+                    }
                 }
             }
+            if (HasVines)
+                PlaceWallVines(gate.transform, from, direction, length, _ => 1f);
 
             return Finish(gate, colliders, Dimension.Real);
         }
@@ -139,16 +144,22 @@ namespace Squad
             Vector3 side = Vector3.Cross(Vector3.up, direction);
             float thickness = Tuning.zoneWallThickness;
             int rows = Mathf.Max(1, Tuning.exitArchBushRows);
-            for (float along = 0f; along <= length; along += Mathf.Max(Tuning.exitArchBushSpacing, 0.5f))
+            float Peak(float along) => Mathf.Lerp(1f, Tuning.exitArchPeak, Mathf.Sin(along / Mathf.Max(length, 0.01f) * Mathf.PI));
+            if (HasBushes)
             {
-                float peak = Mathf.Lerp(1f, Tuning.exitArchPeak, Mathf.Sin(along / Mathf.Max(length, 0.01f) * Mathf.PI));
-                for (int row = 0; row < rows; row++)
+                for (float along = 0f; along <= length; along += Mathf.Max(Tuning.exitArchBushSpacing, 0.5f))
                 {
-                    float across = rows > 1 ? Mathf.Lerp(-thickness * 0.4f, thickness * 0.4f, row / (rows - 1f)) : 0f;
-                    Vector3 spot = from + direction * (along + Random.Range(-0.3f, 0.3f)) + side * (across + Random.Range(-0.4f, 0.4f));
-                    bushes.Add(PlaceContaminatedBush(front.transform, templates, spot, peak));
+                    for (int row = 0; row < rows; row++)
+                    {
+                        float across = rows > 1 ? Mathf.Lerp(-thickness * 0.4f, thickness * 0.4f, row / (rows - 1f)) : 0f;
+                        Vector3 spot = from + direction * (along + Random.Range(-0.3f, 0.3f)) + side * (across + Random.Range(-0.4f, 0.4f));
+                        bushes.Add(PlaceContaminatedBush(front.transform, templates, spot, Peak(along)));
+                    }
                 }
             }
+            // 덩굴도 덤불과 함께 돌려주어, 불을 켤 때마다 덤불과 섞여 하나씩 탄다.
+            if (HasVines)
+                bushes.AddRange(PlaceWallVines(front.transform, from, direction, length, Peak));
 
             return Finish(front, colliders, Dimension.None);
         }
@@ -172,15 +183,20 @@ namespace Squad
             body.direction = 1;
 
             // 가운데에 하나, 둘레에 나머지를 두어 불이 보이지 않게 덮는다.
-            List<GameObject> templates = Templates(trees: false);
-            int count = Mathf.Max(1, Tuning.campfireCoverBushes);
-            PlaceContaminatedBush(cover.transform, templates, center);
-            for (int i = 1; i < count; i++)
+            if (HasBushes)
             {
-                float angle = i * 360f / (count - 1) + Random.Range(-15f, 15f);
-                Vector3 spot = center + ZoneMap.Direction(angle) * (radius * Random.Range(0.4f, 0.9f));
-                PlaceContaminatedBush(cover.transform, templates, spot);
+                List<GameObject> templates = Templates(trees: false);
+                int count = Mathf.Max(1, Tuning.campfireCoverBushes);
+                PlaceContaminatedBush(cover.transform, templates, center);
+                for (int i = 1; i < count; i++)
+                {
+                    float angle = i * 360f / (count - 1) + Random.Range(-15f, 15f);
+                    Vector3 spot = center + ZoneMap.Direction(angle) * (radius * Random.Range(0.4f, 0.9f));
+                    PlaceContaminatedBush(cover.transform, templates, spot);
+                }
             }
+            if (HasVines)
+                PlaceCampfireVines(cover.transform, center, radius);
 
             return Finish(cover, colliders, Dimension.Real);
         }
@@ -450,8 +466,164 @@ namespace Squad
         {
             GameObject bush = PlaceBush(parent, templates, spot, Tuning.contaminatedBushTint,
                                         Tuning.bushScaleMin * scale, Tuning.bushScaleMax * scale, fades: false);
-            ApplyGrime(bush, BushTexture, Tuning.bushGrimeAmount, Color.white, opaque: false);
+            ApplyGrime(bush, BrambleTexture, Tuning.bushGrimeAmount, Color.white, opaque: false);
             return bush;
+        }
+
+        // 오염 덤불(덮개, 관문, 아치)의 모습과 텍스처. 세 곳이 같은 값을 써서 "불로 태울 오염"으로 함께 읽힌다.
+        private static bool HasBushes => Tuning.brambleStyle != BrambleStyle.Vines;
+        private static bool HasVines => Tuning.brambleStyle != BrambleStyle.Bushes;
+        private static string BrambleTexture => string.IsNullOrEmpty(Tuning.brambleTexture) ? BushTexture : Tuning.brambleTexture;
+
+        // ── 모닥불 덩굴 ──────────────────────────────────────────────
+
+        // 덩굴 관 한 바퀴의 꼭짓점 수와, 덩굴 하나를 이루는 마디 수
+        private const int VineSides = 6;
+        private const int VineSegments = 24;
+
+        // 텍스처마다 덩굴 재질을 하나씩만 만든다.
+        private static readonly Dictionary<string, Material> _vineMaterials = new();
+
+        /// <summary>
+        /// 불 위로 엉겨 넘어가는 덩굴들을 만든다. 둘레의 땅에서 솟아 불 위를 지나 반대편 땅으로 내려간다.
+        /// 덩굴 하나하나의 기준점이 불 자리라, 탈 때(BurnAway) 하나씩 불 쪽으로 오그라든다.
+        /// </summary>
+        private static void PlaceCampfireVines(Transform parent, Vector3 center, float radius)
+        {
+            int count = Mathf.Max(1, Tuning.campfireVines);
+            for (int i = 0; i < count; i++)
+            {
+                float angle = i * 360f / count + Random.Range(-12f, 12f);
+                // 반대편에서 조금 비켜 내려가야 덩굴들이 한 점에서 겹치지 않고 엉긴다.
+                float across = angle + 180f + Random.Range(-50f, 50f);
+                Vector3 from = center + ZoneMap.Direction(angle) * (radius * Random.Range(0.8f, 1.1f));
+                Vector3 to = center + ZoneMap.Direction(across) * (radius * Random.Range(0.8f, 1.1f));
+                PlaceVine(parent, center, from, to, Tuning.vineHeight * Random.Range(0.75f, 1.15f));
+            }
+        }
+
+        /// <summary>
+        /// 관문이나 아치처럼 from에서 direction으로 length만큼 이어진 덤불 벽에 덩굴을 감는다.
+        /// 덩굴은 벽 한쪽 땅에서 솟아 벽을 비스듬히 넘어 반대쪽 땅으로 내려간다. 넘는 방향을 번갈아 엇갈리게 한다.
+        /// heightScale(along): 그 자리에서 덩굴 높이에 곱할 배율 (아치는 가운데가 높다)
+        /// </summary>
+        private static List<GameObject> PlaceWallVines(Transform parent, Vector3 from, Vector3 direction, float length,
+                                                       System.Func<float, float> heightScale)
+        {
+            var vines = new List<GameObject>();
+            Vector3 side = Vector3.Cross(Vector3.up, direction);
+            float reach = Tuning.zoneWallThickness * 0.5f + 0.6f;
+            float spacing = Mathf.Max(Tuning.wallVineSpacing, 0.3f);
+            int index = 0;
+            for (float along = spacing * 0.5f; along <= length; along += spacing, index++)
+            {
+                float flip = index % 2 == 0 ? 1f : -1f;
+                float slant = Random.Range(0.8f, 2.2f) * (Random.value < 0.5f ? 1f : -1f);
+                Vector3 middle = from + direction * (along + Random.Range(-0.3f, 0.3f));
+                Vector3 start = middle + side * (reach * flip) - direction * slant;
+                Vector3 end = middle - side * (reach * flip) + direction * slant;
+                float height = Tuning.vineHeight * heightScale(along) * Random.Range(0.8f, 1.15f);
+                vines.Add(PlaceVine(parent, middle, start, end, height));
+            }
+            return vines;
+        }
+
+        // 덩굴 하나를 만든다. pivot은 기준점(탈 때 이쪽으로 오그라든다), from과 to는 덩굴의 두 끝이 묻힐 땅 자리.
+        // 덩굴마다 따로 구불거리고, 양 끝으로 갈수록 가늘어진다. 오염 덤불과 같은 셰이더와 텍스처를 쓴다.
+        private static GameObject PlaceVine(Transform parent, Vector3 pivot, Vector3 from, Vector3 to, float height)
+        {
+            var vine = new GameObject("Vine");
+            vine.transform.SetParent(parent, false);
+            vine.transform.position = Ground(pivot);
+            vine.AddComponent<MeshFilter>().sharedMesh = VineMesh(vine.transform, Ground(from), Ground(to), height,
+                Tuning.vineThickness * Random.Range(0.7f, 1.3f));
+            vine.AddComponent<MeshRenderer>().sharedMaterial = VineMaterial(BrambleTexture);
+            return vine;
+        }
+
+        // from에서 솟아 to로 내려가는 덩굴 관. 꼭짓점은 owner 기준 좌표로 만든다.
+        private static Mesh VineMesh(Transform owner, Vector3 from, Vector3 to, float height, float thickness)
+        {
+            float waves = Random.Range(2f, 4f);
+            float wobble = Random.Range(0.15f, 0.35f);
+            float phase = Random.value * Mathf.PI * 2f;
+
+            // 중심선: 두 땅 자리를 잇는 선을 포물선으로 들어 올리고, 옆으로 구불거리게 한다.
+            var points = new Vector3[VineSegments + 1];
+            Vector3 side = Vector3.Cross(Vector3.up, (to - from).normalized);
+            for (int s = 0; s <= VineSegments; s++)
+            {
+                float t = s / (float)VineSegments;
+                Vector3 point = Vector3.Lerp(from, to, t) + Vector3.up * (4f * height * t * (1f - t));
+                point += side * (Mathf.Sin(t * Mathf.PI * waves + phase) * wobble);
+                // 양 끝은 땅에 조금 묻는다.
+                point += Vector3.down * (0.15f * (1f - Mathf.Sin(t * Mathf.PI)));
+                points[s] = owner.InverseTransformPoint(point);
+            }
+
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var triangles = new List<int>();
+            for (int s = 0; s <= VineSegments; s++)
+            {
+                float t = s / (float)VineSegments;
+                Vector3 forward = (points[Mathf.Min(s + 1, VineSegments)] - points[Mathf.Max(s - 1, 0)]).normalized;
+                Vector3 right = Vector3.Cross(Vector3.up, forward);
+                right = right.sqrMagnitude < 0.001f ? Vector3.right : right.normalized;
+                Vector3 up = Vector3.Cross(forward, right);
+                // 가운데가 굵고 양 끝으로 갈수록 가늘다.
+                float r = thickness * Mathf.Lerp(0.45f, 1f, Mathf.Sin(t * Mathf.PI));
+                for (int k = 0; k <= VineSides; k++)
+                {
+                    float a = k / (float)VineSides * Mathf.PI * 2f;
+                    Vector3 normal = right * Mathf.Cos(a) + up * Mathf.Sin(a);
+                    vertices.Add(points[s] + normal * r);
+                    normals.Add(normal);
+                    uvs.Add(new Vector2(k / (float)VineSides, t));
+                }
+            }
+            int stride = VineSides + 1;
+            for (int s = 0; s < VineSegments; s++)
+            {
+                for (int k = 0; k < VineSides; k++)
+                {
+                    int a = s * stride + k;
+                    int b = a + stride;
+                    triangles.Add(a); triangles.Add(b); triangles.Add(a + 1);
+                    triangles.Add(a + 1); triangles.Add(b); triangles.Add(b + 1);
+                }
+            }
+
+            var mesh = new Mesh { name = "Vine" };
+            mesh.SetVertices(vertices);
+            mesh.SetNormals(normals);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        private static Material VineMaterial(string texture)
+        {
+            if (_vineMaterials.TryGetValue(texture, out Material material) && material != null)
+                return material;
+
+            Shader shader = Shader.Find(GrimeShaderName);
+            material = new Material(shader != null ? shader : Shader.Find("Standard")) { name = "Vine (" + texture + ")" };
+            material.SetColor(ColorId, Tuning.contaminatedBushTint);
+            material.SetFloat(CutoffId, 0f);
+            Texture2D grime = Resources.Load<Texture2D>(GrimeTextureFolder + texture);
+            if (grime != null)
+            {
+                material.SetTexture(GrimeTexId, grime);
+                material.SetFloat(GrimeSizeId, Tuning.grimeSize);
+                // 덩굴에는 원래 모습이 없으므로 텍스처로 다 덮는다.
+                material.SetFloat(GrimeAmountId, 1f);
+                material.SetColor("_GrimeTint", Color.white);
+            }
+            _vineMaterials[texture] = material;
+            return material;
         }
 
         // 견본 하나를 복제해 spot에 놓는다. 견본이 없으면 어두운 덩어리로 대신한다.

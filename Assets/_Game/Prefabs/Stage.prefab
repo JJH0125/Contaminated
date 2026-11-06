@@ -144,6 +144,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 4663783852428053269}
+  footsteps:
+  - {fileID: 8300000, guid: 9e13db95f3160434686214acbfe88f27, type: 3}
+  - {fileID: 8300000, guid: 9e60c55d4f0c1144f9f4f6a2ff0e553f, type: 3}
+  - {fileID: 8300000, guid: 54bc704101ca86648b55cec5687d4a1f, type: 3}
 --- !u!114 &3051411009247864832
 MonoBehaviour:
   m_ObjectHideFlags: 0

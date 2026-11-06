@@ -4,5 +4,6 @@
 
 zip은 용량이 커서(5개 384MB) Git에 올리지 않는다.
 게임에서 쓰는 것은 색 맵을 1024로 줄인 사본이다: Assets/_Game/Resources/Textures/Contamination
-  moss_wood   오염 덤불 (봉인된 관문, 모닥불 고리)
+  moss_wood   오염 덤불 (봉인된 관문, 출구 아치, 모닥불 덮개)
   mossy_rock  엄폐 바위
+  brown_mud_leaves_01  오염 덤불·덩굴 시험용 (GameTuning > Map > Bramble Texture). Poly Haven(CC0)에서 1k 색 맵을 받음

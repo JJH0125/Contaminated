@@ -207,7 +207,7 @@ MonoBehaviour:
       firesToOpenExit: 3
       realEnemies: 5
       fakeEnemies: 3
-      fakeExtinguish: 1
+      fakeExtinguish: 0
       contaminationPools: 6
       lightIntensity: 0.6
       fogDensity: 1.45
@@ -218,7 +218,7 @@ MonoBehaviour:
       firesToOpenExit: 4
       realEnemies: 6
       fakeEnemies: 4
-      fakeExtinguish: 1
+      fakeExtinguish: 0
       contaminationPools: 8
       lightIntensity: 0.45
       fogDensity: 1.7
@@ -229,7 +229,7 @@ MonoBehaviour:
       firesToOpenExit: 4
       realEnemies: 6
       fakeEnemies: 4
-      fakeExtinguish: 1
+      fakeExtinguish: 0
       contaminationPools: 8
       lightIntensity: 0.4
       fogDensity: 1.8

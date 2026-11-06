@@ -358,6 +358,10 @@ namespace Squad
         public bool seesOnlyTorch = false;
         [Tooltip("소리를 듣는 거리의 배율. 소리마다 정한 반경에 곱한다. 1이면 그대로다")]
         public float hearingMultiplier = 1f;
+        [Tooltip("들은 소리를 기억하는 시간(초). 추격 등 더 중요한 일 때문에 조사하러 가지 못한 소리는 이 시간이 지나면 잊는다")]
+        public float soundMemoryTime = 20f;
+        [Tooltip("소리가 난 자리에 도착한 뒤 둘러보는 시간(초). 그동안 플레이어를 못 보면 조사를 끝낸다. 둘러보는 중에 새 소리를 들으면 처음부터 다시 센다")]
+        public float soundSearchTime = 3f;
         [Tooltip("볼 수 있는 최대 거리(m)")]
         public float viewDistance = 22f;
         [Tooltip("시야각(도)")]
@@ -388,6 +392,14 @@ namespace Squad
         public float maxAnimSpeed = 2.5f;
         [Tooltip("움직임 전체에 곱하는 재생 배속. 1보다 작으면 느리고 무겁게 움직인다 (이동 속도는 그대로다)")]
         public float animSpeedMultiplier = 1f;
+
+        [Header("발소리 (ChaserAnimator에 발소리 클립이 연결된 적만)")]
+        [Tooltip("이만큼(m) 걸을 때마다 발소리를 한 번 낸다. 빨리 달리면 그만큼 자주 난다")]
+        public float footstepStride = 2.2f;
+        [Tooltip("발소리의 크기. 효과음 볼륨에 곱해진다")]
+        [Range(0f, 1f)] public float footstepVolume = 0.8f;
+        [Tooltip("발소리가 들리는 최대 거리(m). 가까울수록 크게 들린다")]
+        public float footstepMaxDistance = 35f;
 
         [Header("잡힐 때의 연출")]
         [Tooltip("연출 길이(초). 끝나면 게임 오버 화면으로 넘어간다")]
@@ -453,11 +465,11 @@ namespace Squad
                              lightIntensity = 1f, fogDensity = 1f, fakeContamination = 0.5f, realContamination = 0f },
             new RoundSetup { openZones = 3, campfires = 3, firesToOpenExit = 3, realEnemies = 3, fakeEnemies = 2, contaminationPools = 5,
                              lightIntensity = 0.8f, fogDensity = 1.2f, fakeContamination = 0.6f, realContamination = 0f },
-            new RoundSetup { openZones = 4, campfires = 3, firesToOpenExit = 3, realEnemies = 5, fakeExtinguish = true, fakeEnemies = 3, contaminationPools = 6,
+            new RoundSetup { openZones = 4, campfires = 3, firesToOpenExit = 3, realEnemies = 5, fakeEnemies = 3, contaminationPools = 6,
                              lightIntensity = 0.6f, fogDensity = 1.45f, fakeContamination = 0.7f, realContamination = 0.15f },
-            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeExtinguish = true, fakeEnemies = 4, contaminationPools = 8,
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
                              lightIntensity = 0.45f, fogDensity = 1.7f, fakeContamination = 0.8f, realContamination = 0.25f },
-            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeExtinguish = true, fakeEnemies = 4, contaminationPools = 8,
+            new RoundSetup { openZones = 4, campfires = 4, firesToOpenExit = 4, realEnemies = 6, fakeEnemies = 4, contaminationPools = 8,
                              lightIntensity = 0.4f, fogDensity = 1.8f, fakeContamination = 0.85f, realContamination = 0.3f },
         };
 
@@ -511,7 +523,7 @@ namespace Squad
         public int realEnemies = 3;
         [Tooltip("Fake 차원 적의 수. 0이면 Fake에는 적이 없다")]
         public int fakeEnemies = 3;
-        [Tooltip("Fake 적이 켜진 모닥불을 끄러 가는가. 출구가 열린 뒤에는 끄지 않는다")]
+        [Tooltip("Fake 적이 켜진 모닥불을 끄러 가는가. 출구가 열린 뒤에는 끄지 않는다. 11/6부터 게임에서는 모든 라운드에서 끔(시연에서 인스펙터 체크박스로만 켠다)")]
         public bool fakeExtinguish = false;
         [Tooltip("Fake에서만 길을 막는 오염 웅덩이의 수")]
         public int contaminationPools = 5;
@@ -526,6 +538,9 @@ namespace Squad
         [Tooltip("Real에도 늘 비치는 얼룩의 정도. 0이면 Real은 깨끗하다. 라운드가 오를수록 Real까지 오염이 번진다")]
         [Range(0f, 1f)] public float realContamination = 0f;
     }
+
+    /// 오염 덤불(모닥불 덮개, 봉인된 관문, 출구 아치)의 모습. 덤불(숲의 덤불 복제), 덩굴(코드로 만든 관), 둘 다
+    public enum BrambleStyle { Bushes, Vines, BushesAndVines }
 
     [System.Serializable]
     public class MapTuning
@@ -568,6 +583,8 @@ namespace Squad
         public float campfireCoverRadius = 3f;
         [Tooltip("모닥불을 덮는 덤불의 수. 불이 보이지 않을 만큼 둔다")]
         public int campfireCoverBushes = 9;
+        [Tooltip("덩굴이 있을 때(Bramble Style) 불 위로 넘어가는 덩굴의 수")]
+        public int campfireVines = 12;
         [Tooltip("이 거리(m, 평면) 안에서 E를 누르고 있으면 불을 붙인다")]
         public float lightRadius = 4f;
         [Tooltip("불이 붙기까지 E를 누르고 있어야 하는 시간(초)")]
@@ -587,9 +604,20 @@ namespace Squad
         [Tooltip("구역 벽 나무와 밑동 덤불의 색. 숲보다 조금 어둡게 둔다")]
         public Color zoneWallTint = new Color(0.55f, 0.5f, 0.55f);
 
-        [Header("오염 덤불 (봉인된 관문과 모닥불 덮개. 불로 걷히는 덤불)")]
+        [Header("오염 덤불 (모닥불 덮개, 봉인된 관문, 출구 아치. 불로 걷히는 덤불)")]
         [Tooltip("오염 텍스처가 덤불을 덮는 정도. 0이면 원래 숲의 덤불과 같다")]
         [Range(0f, 1f)] public float bushGrimeAmount = 0.85f;
+        [Tooltip("오염 덤불의 모습. 모닥불 덮개, 봉인된 관문, 출구 아치에 함께 쓴다.\n" +
+                 "Bushes: 덤불 / Vines: 덩굴만 / BushesAndVines: 덤불 위로 덩굴이 감김.\n라운드가 시작될 때 만들어지므로 바꾸면 다음 라운드(F9)부터 보인다")]
+        public BrambleStyle brambleStyle = BrambleStyle.Bushes;
+        [Tooltip("오염 덤불과 덩굴에 덧입힐 텍스처 이름 (Resources/Textures/Contamination). 세 곳에 함께 쓴다. 비우면 moss_wood")]
+        public string brambleTexture = "";
+        [Tooltip("덩굴의 굵기(반지름, m)")]
+        public float vineThickness = 0.14f;
+        [Tooltip("덩굴이 솟는 높이(m). 출구 아치에서는 가운데로 갈수록 아치의 높이 배율만큼 더 높다")]
+        public float vineHeight = 1.8f;
+        [Tooltip("관문과 출구 아치에서 덩굴을 감는 간격(m)")]
+        public float wallVineSpacing = 1.5f;
         [Tooltip("오염 텍스처 한 장이 덮는 크기(m). 작으면 촘촘해서 노이즈처럼 보이고, 크면 밋밋하다")]
         public float grimeSize = 5f;
         [Tooltip("오염 덤불의 색. 텍스처 위에 곱해진다. 어두울수록 검게 엉겨 보인다")]
@@ -646,6 +674,8 @@ namespace Squad
         public float emberIntensity = 1.2f;
         [Tooltip("불씨 빛이 닿는 거리(m)")]
         public float emberRange = 5f;
+        [Tooltip("Fake에서 불씨가 몇 배 밝은가. Fake에서는 덮은 덤불이 없어 불씨가 더 뚜렷하게 보인다")]
+        public float emberFakeMultiplier = 2.5f;
 
         [Header("엄폐 바위 (적의 시선을 가리는 작은 바위 무리)")]
         [Tooltip("관문 하나의 둘레에 놓을 바위 무리의 수")]

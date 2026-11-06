@@ -45,6 +45,9 @@ namespace Squad
         private float roarRadius => Tuning.roarRadius;
         private float joinTimeout => Tuning.joinTimeout;
 
+        // 소리 기억
+        private float soundMemoryTime => Tuning.soundMemoryTime;
+
         // 추격 겹침 (여러 적이 함께 볼 때)
         private float interceptLeadTime => Tuning.interceptLeadTime;
         private float interceptSpacing => Tuning.interceptSpacing;
@@ -218,6 +221,19 @@ namespace Squad
             ReplanNow();
         }
 
+        /// <summary>
+        /// 소리를 들었을 때. 반경 안에서 이 적이 들었다고 SoundEmitter가 판정한 순간에 부른다.
+        /// 자기 기록에만 적고(이전 소리는 덮어씀), 새 소리로 곧바로 다시 계획한다.
+        /// </summary>
+        public void HearSound(Vector3 position)
+        {
+            if (_ctx == null)
+                return;
+
+            _ctx.HearSound(position);
+            ReplanNow();
+        }
+
         private void ReplanNow()
         {
             Replan();
@@ -342,12 +358,14 @@ namespace Squad
 
         /// 현재 추격자 입장에서의 WorldState 생성
         /// 존재할 수 있는 Key를 모두 생성한다.
-        /// playerVisible과 heardSound는 블랙보드에서 가져오고, 나머지는 false로 초기화한다.
+        /// playerVisible은 블랙보드에서, heardSound는 자기 컨텍스트(들은 적만 아는 소리)에서 가져오고, 나머지는 false로 초기화한다.
         ///
         /// 9.6 수정: 블랙보드에서 가져온 시야와 소리 정보를 곧이곧대로 읽지 말고
         /// 이 추격자 또한 보고 들을 수 있었던 정보인지를 한번 검사함으로써
         /// 날 보지도 못하는 추격자가 날 인식하게 되는 버그를 수정.
         /// 10.20 수정: 같은 차원이면 맵의 반대편에서 적이 플레이어를 발견할 경우 곧장 추격을 시작하는 버그를 수정.
+        /// 11.6 수정: 소리를 블랙보드 한 칸에서 읽던 것을 적마다의 기록으로 바꿈. 듣지 못한 적이 조사하러 가거나,
+        ///            한 적이 조사를 끝내면 다른 적의 조사까지 끝나던 문제를 수정.
         private WorldState BuildWorldState()
         {
             var bb = _ctx.Blackboard;
@@ -364,7 +382,10 @@ namespace Squad
             s.Facts["signalInvestigated"] = false;
 
             // 소리 조사 관련 사실.
-            s.Facts["heardSound"] = bb.HasSound && CanHearSoundNow();
+            // 들은 적의 기록만 본다. 추격 등으로 못 간 소리는 soundMemoryTime이 지나면 잊는다.
+            if (_ctx.HasSound && Time.time - _ctx.SoundTime > soundMemoryTime)
+                _ctx.ClearSound();
+            s.Facts["heardSound"] = _ctx.HasSound;
             s.Facts["atSoundLocation"] = false;
             s.Facts["soundInvestigated"] = false;
 
@@ -438,17 +459,6 @@ namespace Squad
             return false;
         }
 
-        /// BuildWorldState 함수를 보조하는 함수 (소리)
-        private bool CanHearSoundNow()
-        {
-            if (_ctx.Blackboard.SoundCanCrossDimension)
-                return true;
-            else if (_ctx.Blackboard.SoundDimension == enemy.Dimension)
-                return true;
-
-            return false;
-        }
-
         // 시각화 함수
         private void OnDrawGizmos()
         {
@@ -460,11 +470,11 @@ namespace Squad
             Gizmos.DrawWireSphere(transform.position, catchRadius);
 
             // 소리가 발생한 곳을 시안색 구로 표시, 적과 선으로 연결
-            if (_ctx != null && _ctx.Blackboard != null && _ctx.Blackboard.HasSound)
+            if (_ctx != null && _ctx.HasSound)
             {
                 Gizmos.color = Color.cyan;
-                Gizmos.DrawWireSphere(_ctx.Blackboard.LastSoundPosition, 0.4f);
-                Gizmos.DrawLine(transform.position, _ctx.Blackboard.LastSoundPosition);
+                Gizmos.DrawWireSphere(_ctx.SoundPosition, 0.4f);
+                Gizmos.DrawLine(transform.position, _ctx.SoundPosition);
             }
 
             // 발견 신호를 받고 합류한 적: 주황색 선으로 발견 지점과 연결

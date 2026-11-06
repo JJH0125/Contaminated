@@ -25,8 +25,8 @@ namespace Squad
         [SerializeField] private Sound decoy = new Sound("Decoy", 30f, 0f, AlertLevel.Suspicious, false);
         [Tooltip("플레이어가 차원을 넘어 도착한 자리에서 나는 소리. 도착한 차원의 적만 들어야 하므로 차원을 관통하지 않게 둔다")]
         [SerializeField] private Sound dimensionShift = new Sound("DimensionShift", 25f, 0f, AlertLevel.Suspicious, false);
-        [Tooltip("꺼진 모닥불에 불이 붙는 소리. 차원을 넘어 퍼져서, 덮개가 걷힌 불가에 두 차원의 적이 모여든다")]
-        [SerializeField] private Sound fireLit = new Sound("FireLit", 35f, 0f, AlertLevel.Suspicious, true);
+        [Tooltip("꺼진 모닥불에 불이 붙는 소리. 차원을 넘지 않고, Campfire가 두 차원에 따로 낸다(재의 차원: 불이 켜질 때, 현실: 덮개가 탈 때)")]
+        [SerializeField] private Sound fireLit = new Sound("FireLit", 35f, 0f, AlertLevel.Suspicious, false);
 
         public Sound Walking => walking;
         public Sound Running => running;
