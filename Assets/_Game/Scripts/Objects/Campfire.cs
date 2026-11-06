@@ -349,9 +349,27 @@ namespace Squad
             if (flameRenderer == null || flameRenderer.sharedMaterial == null)
                 return null;
 
+            return CreateSmokeColumn(transform, Vector3.up * 1f, flameRenderer.sharedMaterial);
+        }
+
+        /// <summary>root(예: Stage 프리팹) 안의 모닥불이 쓰는 불꽃 재질. 없으면 null.</summary>
+        public static Material FindFlameMaterial(GameObject root)
+        {
+            Campfire campfire = root != null ? root.GetComponentInChildren<Campfire>(true) : null;
+            Transform flames = campfire != null ? campfire.transform.Find(FlamesName) : null;
+            ParticleSystemRenderer renderer = flames != null ? flames.GetComponentInChildren<ParticleSystemRenderer>(true) : null;
+            return renderer != null ? renderer.sharedMaterial : null;
+        }
+
+        /// <summary>
+        /// 꺼진 모닥불의 연기 기둥을 parent 아래에 만든다. 멈춘 채로 돌려주므로 Play로 피워 올린다.
+        /// 타이틀 화면의 연기 기둥(TitleBackground)도 이것을 쓴다.
+        /// </summary>
+        public static ParticleSystem CreateSmokeColumn(Transform parent, Vector3 localPosition, Material material)
+        {
             var smokeObject = new GameObject("Smoke");
-            smokeObject.transform.SetParent(transform, false);
-            smokeObject.transform.localPosition = Vector3.up * 1f;
+            smokeObject.transform.SetParent(parent, false);
+            smokeObject.transform.localPosition = localPosition;
             smokeObject.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
 
             var smoke = smokeObject.AddComponent<ParticleSystem>();
@@ -387,7 +405,7 @@ namespace Squad
             color.color = fade;
 
             var smokeRenderer = smokeObject.GetComponent<ParticleSystemRenderer>();
-            smokeRenderer.sharedMaterial = flameRenderer.sharedMaterial;
+            smokeRenderer.sharedMaterial = material;
             smokeRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return smoke;
         }

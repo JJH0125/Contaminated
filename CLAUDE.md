@@ -157,6 +157,8 @@ HorrorChaserAgent.Update → currentAction.Perform → ChaserLocomotion.MoveTo �
 
 ### ✅ 그 밖의 최근 변경
 
+- **타이틀 배경** (`UI/TitleBackground`, GameManager가 Main Camera에 붙임, 수치는 `GameTuning > Title`): 같은 숲을 흐린 낮빛·잿빛 안개·채도 낮춤으로 밝게 보여 주고, 카메라가 봉우리 둘레를 돈다(고리). 연기 기둥 하나(`Campfire.CreateSmokeColumn`), 20~40초마다 1초 재의 차원 깜빡임, 시작을 누르면 3초 동안 빛이 빠지며 카메라가 플레이어 쪽으로 옮겨 감. 빛은 `RoundAtmosphere.SetTitleBlend`(1=타이틀, 0=라운드)로 섞는다. 타이틀에서도 `timeScale`은 1. 120초 입력이 없으면 타이틀로 돌아감(`GameManager.Update`, 시연 씬 제외)
+- 메뉴 버튼 꾸미기: **Tools > 메뉴 UI 꾸미기**(`Editor/MenuStyleTool`)가 열린 씬의 버튼에 어두운 UI 팩(`ThirdParty/kΩsmaragd`)의 분필 테두리를 입히고, 타이틀에 제목 "CONTAMINATED"(Black Ops One, 포스터와 같은 글꼴, 영문 전용)를 놓음. 큰 문구(일시정지·잡힘·탈출 성공)와 라운드 시작 문구(`UI/RoundBanner`, GameUI 아래, `GameManager.RoundStartCount`를 보고 뜸)는 Black Han Sans, 나머지는 Noto Sans KR. 글꼴 에셋은 쓰는 글자만 그린 고정 에셋이라 문구를 고치면 메뉴를 다시 실행. 실행 후 씬 저장 필요
 - 현실의 적 발소리: `ChaserAnimator.footsteps`(Stage 프리팹의 Real 적에 괴물 발소리 3개 연결), 걸은 거리마다 3D 소리, 같은 차원일 때만 들림. 재의 적은 `AshWindSound`가 이동 소리 역할
 - 미끼 돌(`Stone`, `StoneHolder`): 줍고 던져서 소리로 적을 유인. 줍기·던지기 애니메이션은 제거
 - 횃불 메커니즘 변경, 숨기기와 온기 게이지

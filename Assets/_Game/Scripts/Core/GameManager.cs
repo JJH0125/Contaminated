@@ -22,6 +22,7 @@ namespace Squad
     ///   - 모닥불과 출구 관리
     ///   - 라운드 수/켜진 모닥불 수 표시
     ///   - 클리어 조건 판정과 탈출구 활성화
+    ///   - 전시용: 입력이 한동안 없으면 타이틀로 돌아가기 (GameTuning > Title > Idle Return Time)
     ///
     /// UI는 상태에 맞춰 켜고 끄기만 하며, 내용 갱신은 각 UI 클래스에 맡긴다.
     ///
@@ -55,6 +56,9 @@ namespace Squad
         private bool openExitAtStart => GameTuning.Instance.stage.openExitAtStart;
         private int totalRounds => GameTuning.Instance.stage.totalRounds;
 
+        /// 스테이지 프리팹. 타이틀 배경이 모닥불의 불꽃 재질을 빌려 갈 때 읽는다.
+        public GameObject StagePrefab => stage;
+
         /// 현재 존재하는 스테이지 오브젝트. 게임 시작 시 생성되고, 라운드 종료 시 제거된다.
         private GameObject currentStage;
         /// 현재 게임 상태
@@ -64,6 +68,9 @@ namespace Squad
         public int CurrentRound { get; private set; } = 1;
         /// 전체 라운드 수
         public int TotalRounds => totalRounds;
+
+        /// 라운드를 시작한 횟수. 라운드 시작 문구(RoundBanner)가 이 값이 바뀌는 것을 보고 뜬다.
+        public int RoundStartCount { get; private set; }
 
         // 이번 라운드의 모닥불. 정해 둔 수만큼 켜면 출구가 열린다.
         private readonly HashSet<Campfire> campfires = new();
@@ -102,11 +109,40 @@ namespace Squad
 
         private void Start()
         {
+            // 타이틀 배경(밝은 숲을 도는 카메라)은 씬에 따로 놓지 않고 여기서 카메라에 붙인다.
+            TitleBackground.Ensure(Camera.main);
+
             // 다른 오브젝트들의 Awake가 끝난 뒤에 화면을 구성하도록
             // Awake가 아니라 Start에서 초기 상태를 설정한다.
             // 모닥불 수 표시는 모닥불이 등록될 때마다(AddCampfire) 갱신된다.
             ChangeState(GameState.Title);
             RefreshStatus();
+        }
+
+        // 마지막으로 입력이 있었던 실제 시간과 그때의 마우스 위치
+        private float _lastInputTime;
+        private Vector3 _lastMousePosition;
+
+        /// <summary>
+        /// 전시용: idleReturnTime초 동안 키·마우스 입력이 없으면 타이틀로 돌아간다.
+        /// 관람객이 떠난 뒤 게임 오버나 일시정지 화면에 멈춰 있지 않고, 타이틀이 대기 화면이 된다.
+        /// 타이틀에 있는 동안, 잡힌 연출 중, 시연 씬에서는 세지 않는다.
+        /// </summary>
+        private void Update()
+        {
+            float idleTime = GameTuning.Instance.title.idleReturnTime;
+            bool counting = idleTime > 0f && !DemoScenario.InDemoScene &&
+                            CurrentState != GameState.Title && CurrentState != GameState.Caught;
+
+            if (!counting || Input.anyKey || Input.mousePosition != _lastMousePosition)
+            {
+                _lastInputTime = Time.unscaledTime;
+                _lastMousePosition = Input.mousePosition;
+                return;
+            }
+
+            if (Time.unscaledTime - _lastInputTime >= idleTime)
+                ReturnToTitle();
         }
 
         // ── 상태 전환 ────────────────────────────────────────────────
@@ -121,6 +157,7 @@ namespace Squad
             ChangeState(GameState.Playing);
             ClearExitAndCampfires();
             currentStage = Instantiate(stage, Vector3.zero, Quaternion.identity);
+            RoundStartCount++;
         }
 
         /// <summary>
@@ -245,9 +282,10 @@ namespace Squad
 
             switch (CurrentState)
             {
+                // 타이틀에는 Stage가 없어 멈출 것이 없다. 배경의 풀과 연기가 움직이도록 시간은 흐르게 둔다.
                 case GameState.Title:
                     ShowOnly(titleUI);
-                    Time.timeScale = 0f;
+                    Time.timeScale = 1f;
                     break;
 
                 case GameState.Playing:

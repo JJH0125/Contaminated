@@ -97,6 +97,9 @@ namespace Squad
         [Tooltip("배경음과 효과음")]
         public AudioTuning audio = new();
 
+        [Tooltip("타이틀 화면의 배경: 밝은 숲을 도는 카메라, 연기 기둥, 재의 차원 깜빡임, 시작 전환, 입력이 없을 때 타이틀로 돌아가기, 라운드 시작 문구")]
+        public TitleTuning title = new();
+
         /// <summary>그 차원의 적이 쓰는 값. 차원을 모르면 Real 값을 쓴다.</summary>
         public EnemyTuning EnemyFor(Dimension dimension) => dimension == Dimension.Fake ? fakeEnemy : realEnemy;
 
@@ -698,6 +701,82 @@ namespace Squad
         [Header("차원 이동 위치 보정")]
         [Tooltip("넘어간 자리가 그 차원에서 막혀 있으면, 이 거리(m) 안의 가장 가까운 열린 자리로 옮긴다")]
         public float escapeSearchDistance = 30f;
+    }
+
+    [System.Serializable]
+    public class TitleTuning
+    {
+        [Header("카메라 (봉우리 둘레를 돈다)")]
+        [Tooltip("한 바퀴 도는 데 걸리는 시간(초). 한 바퀴가 끝나면 처음 자리로 이어진다")]
+        public float loopTime = 120f;
+        [Tooltip("봉우리에서 카메라까지의 평균 거리(m)")]
+        public float orbitRadius = 95f;
+        [Tooltip("한 바퀴 동안 두 번 이만큼(m) 다가갔다 멀어진다")]
+        public float radiusSwing = 30f;
+        [Tooltip("카메라 아래 땅에서 카메라까지의 높이(m)")]
+        public float height = 40f;
+        [Tooltip("높이가 오르내리는 폭(m)")]
+        public float heightSwing = 8f;
+        [Tooltip("바라보는 곳의 땅 위 높이(m)")]
+        public float lookHeight = 8f;
+        [Tooltip("바라보는 곳. 0이면 봉우리, 1이면 연기 기둥")]
+        [Range(0f, 1f)] public float lookAtSmoke = 0.35f;
+
+        [Header("빛 (흐린 낮: 밝지만 생기 없는 숲)")]
+        [Tooltip("방향광 밝기. 씬에 놓인 값에 곱한다")]
+        public float sunIntensity = 1.3f;
+        [Tooltip("방향광 색. 약간 차갑게")]
+        public Color sunColor = new Color(0.86f, 0.9f, 1f);
+        [Tooltip("방향광의 부드러운 그림자를 켠다 (게임에서는 씬 설정대로)")]
+        public bool sunShadows = true;
+        [Tooltip("주변광 색")]
+        public Color ambientColor = new Color(0.55f, 0.58f, 0.62f);
+        [Tooltip("안개 색. 밝은 잿빛")]
+        public Color fogColor = new Color(0.7f, 0.72f, 0.74f);
+        [Tooltip("안개 짙기 (지수 안개)")]
+        public float fogDensity = 0.007f;
+        [Tooltip("색이 빠지는 정도. -100이면 흑백")]
+        [Range(-100f, 0f)] public float saturation = -35f;
+
+        [Header("연기 기둥 (꺼진 모닥불)")]
+        [Tooltip("연기 기둥을 세운다")]
+        public bool smoke = true;
+        [Tooltip("봉우리에서 본 방향(도). 북쪽이 0, 동쪽이 90")]
+        public float smokeAngle = 200f;
+        [Tooltip("봉우리에서 떨어진 거리(m)")]
+        public float smokeDistance = 45f;
+
+        [Header("재의 차원 깜빡임")]
+        [Tooltip("깜빡이는 평균 간격(초). 0이면 깜빡이지 않는다")]
+        public float flashInterval = 30f;
+        [Tooltip("간격이 이만큼(초) 들쭉날쭉하다")]
+        public float flashIntervalRandom = 10f;
+        [Tooltip("재의 차원으로 바뀌어 있는 시간(초)")]
+        public float flashDuration = 1f;
+        [Tooltip("바뀌고 돌아오는 데 걸리는 시간(초)")]
+        public float flashFade = 0.12f;
+        [Tooltip("깜빡일 때 색이 빠지는 정도. -100이면 흑백")]
+        [Range(-100f, 0f)] public float flashSaturation = -100f;
+        [Tooltip("깜빡일 때 어두워지는 정도. 음수일수록 어둡다")]
+        [Range(-100f, 0f)] public float flashBrightness = -35f;
+
+        [Header("시작 전환")]
+        [Tooltip("시작을 누른 뒤 밝은 숲이 게임 화면으로 어두워지는 시간(초). 카메라도 그동안 플레이어 쪽으로 옮겨 간다")]
+        public float startTransitionTime = 3f;
+
+        [Header("전시")]
+        [Tooltip("이 시간(초) 동안 아무 입력이 없으면 타이틀로 돌아간다. 0이면 끈다. 시연 씬에서는 쓰지 않는다")]
+        public float idleReturnTime = 120f;
+
+        [Header("라운드 시작 문구 (RoundBanner)")]
+        [Tooltip("라운드가 시작되고 문구가 뜨기까지(초). 시작 전환으로 화면이 어두워지는 동안 뜨게")]
+        public float bannerDelay = 1f;
+        [Tooltip("문구가 나타나는 시간(초)")]
+        public float bannerFadeIn = 0.6f;
+        [Tooltip("문구가 다 보인 채 머무는 시간(초)")]
+        public float bannerHold = 2.5f;
+        [Tooltip("문구가 사라지는 시간(초)")]
+        public float bannerFadeOut = 1f;
     }
 
     [System.Serializable]
